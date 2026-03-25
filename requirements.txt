@@ -15,5 +15,8 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 httpx>=0.25.0
 
+# Anti-bot stealth layer
+playwright-stealth>=2.0.0
+
 # Optional: structured JSON logs
 # python-json-logger>=2.0.0

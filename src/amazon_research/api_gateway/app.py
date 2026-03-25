@@ -39,24 +39,26 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# CORS: allow all origins for development (frontend on port 3000/3001)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# CORS: env-configurable; safe default (no origins) so production does not open everything
+# CORS: if GATEWAY_CORS_ORIGINS is set, use those specific origins (production);
+# otherwise fall back to allow-all for local development.
 _cors_origins = os.environ.get("GATEWAY_CORS_ORIGINS", "").strip()
 _origins = [o.strip() for o in _cors_origins.split(",") if o.strip()] if _cors_origins else []
+
 if _origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_origins,
         allow_credentials=True,
         allow_methods=["GET", "OPTIONS"],
+        allow_headers=["*"],
+    )
+else:
+    # Development fallback: allow all origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
         allow_headers=["*"],
     )
 

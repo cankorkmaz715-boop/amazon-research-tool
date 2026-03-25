@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amazon-research"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "playwright>=1.40.0",
+    "psycopg2-binary>=2.9.9",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "httpx>=0.25.0",
+]
+
+[project.scripts]
+amazon-research-service = "amazon_research.runtime_service:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

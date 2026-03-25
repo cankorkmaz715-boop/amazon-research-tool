@@ -2,6 +2,7 @@
 Playwright browser session. Single place for launch, context, and page.
 Anti-bot: randomized delays between actions, goto with retry and exponential backoff.
 Proxy from central ProxyManager; timeouts from config. No scraping logic here.
+Stealth: playwright-stealth applied to every new page to minimize bot detection.
 """
 import random
 import time
@@ -12,10 +13,40 @@ from amazon_research.logging_config import get_logger
 logger = get_logger("browser")
 
 
+def _apply_stealth(page: Any) -> None:
+    """Apply playwright-stealth to page. Graceful no-op if library unavailable.
+    sec_ch_ua is disabled for Firefox UAs (Chrome-only header).
+    """
+    try:
+        from playwright_stealth import Stealth
+        from amazon_research.monitoring.antibot_hardening import get_random_user_agent
+        ua = get_random_user_agent()
+        is_firefox = "Firefox/" in ua
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            Stealth(
+                navigator_user_agent_override=ua,
+                navigator_languages_override=("en-US", "en"),
+                navigator_platform_override="Win32",
+                navigator_vendor_override=None if is_firefox else "Google Inc.",
+                webgl_vendor_override="Intel Inc.",
+                webgl_renderer_override="Intel Iris OpenGL Engine",
+                # sec_ch_ua is a Chrome-only client hint — disable for Firefox UAs.
+                # Pass sec_ch_ua_override="" to prevent auto-parse of Firefox UA string.
+                sec_ch_ua=not is_firefox,
+                sec_ch_ua_override="" if is_firefox else None,
+            ).apply_stealth_sync(page)
+        logger.debug("stealth applied", extra={"ua": ua[:60], "firefox": is_firefox})
+    except Exception as e:
+        logger.warning("stealth apply failed (non-fatal): %s", e)
+
+
 class BrowserSession:
     """
     Playwright Chromium session. Use as context manager or call start() / close().
     Injects proxy from ProxyManager when enabled; applies timeout from config.
+    Stealth evasions applied automatically on start().
     """
 
     def __init__(
@@ -69,9 +100,10 @@ class BrowserSession:
             self._context.set_default_navigation_timeout(self._timeout_ms)
             self._context.set_default_timeout(self._timeout_ms)
         self._page = self._context.new_page()
+        _apply_stealth(self._page)
         logger.info(
             "browser session started",
-            extra={"headless": self._headless, "proxy": bool(proxy_dict)},
+            extra={"headless": self._headless, "proxy": bool(proxy_dict), "stealth": True},
         )
 
     def get_page(self):
