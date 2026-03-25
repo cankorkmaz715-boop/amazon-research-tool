@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Research Workflow</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 1rem; }
+    section { margin: 1.5rem 0; border: 1px solid #ddd; padding: 1rem; border-radius: 6px; }
+    h2 { margin-top: 0; font-size: 1.1rem; }
+    .meta { color: #666; font-size: 0.9rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
+    .error { color: #c00; }
+    .loading { color: #666; }
+    #api-key-wrap { margin-bottom: 1rem; }
+    nav { margin-bottom: 1rem; }
+    nav a { margin-right: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Research Workflow</h1>
+  <div id="api-key-wrap">
+    <label>API key (if required): <input type="password" id="api-key" placeholder="optional" /></label>
+    <label>Workspace ID: <input type="number" id="workspace-id" placeholder="e.g. 1" /></label>
+  </div>
+  <nav>
+    <a href="/workspace-overview">Workspace overview</a>
+    <a href="#discovery">Discovery</a>
+    <a href="#metrics">Metrics</a>
+    <a href="#scores">Scores</a>
+    <a href="#saved-views">Saved views</a>
+    <a href="#watchlists">Watchlists</a>
+  </nav>
+
+  <section id="discovery-view">
+    <h2>Discovery results</h2>
+    <p class="meta" id="discovery-meta">—</p>
+    <div id="discovery-content" class="loading">Loading…</div>
+  </section>
+
+  <section id="metrics-view">
+    <h2>Refreshed metrics</h2>
+    <p class="meta" id="metrics-meta">—</p>
+    <div id="metrics-content" class="loading">Loading…</div>
+  </section>
+
+  <section id="scores-view">
+    <h2>Scoring results</h2>
+    <p class="meta" id="scores-meta">—</p>
+    <div id="scores-content" class="loading">Loading…</div>
+  </section>
+
+  <section id="saved-views-integration">
+    <h2>Saved research views</h2>
+    <p class="meta" id="saved-views-meta">—</p>
+    <div id="saved-views-content" class="loading">Loading…</div>
+  </section>
+
+  <section id="watchlist-integration">
+    <h2>Watchlists</h2>
+    <p class="meta" id="watchlists-meta">—</p>
+    <div id="watchlists-content" class="loading">Loading…</div>
+  </section>
+
+  <script>
+    function headers() {
+      const key = document.getElementById("api-key").value.trim();
+      const h = {};
+      if (key) h["X-API-Key"] = key;
+      const ws = document.getElementById("workspace-id").value.trim();
+      if (ws) h["X-Workspace-Id"] = ws;
+      return h;
+    }
+    function qs(ws) {
+      const w = document.getElementById("workspace-id").value.trim();
+      return w ? "?workspace_id=" + w : "";
+    }
+    function fetchJson(path, opts) {
+      return fetch(path, { headers: headers(), ...opts }).then(r => {
+        if (!r.ok) throw new Error(r.status + " " + r.statusText);
+        return r.json();
+      });
+    }
+    function renderTable(data, keys) {
+      if (!data || !data.length) return "<p>No data</p>";
+      const cols = keys || Object.keys(data[0]);
+      let html = "<table><thead><tr>" + cols.map(k => "<th>" + k + "</th>").join("") + "</tr></thead><tbody>";
+      data.forEach(row => {
+        html += "<tr>" + cols.map(k => "<td>" + (row[k] != null ? row[k] : "") + "</td>").join("") + "</tr>";
+      });
+      return html + "</tbody></table>";
+    }
+    function loadDiscovery() {
+      fetchJson("/products?limit=20").then(res => {
+        document.getElementById("discovery-meta").textContent = "Count: " + (res.meta && res.meta.count != null ? res.meta.count : res.data.length);
+        document.getElementById("discovery-content").innerHTML = renderTable(res.data, ["asin", "title", "category", "created_at"]);
+        document.getElementById("discovery-content").classList.remove("loading");
+      }).catch(e => {
+        document.getElementById("discovery-content").innerHTML = "<p class=\"error\">" + e.message + "</p>";
+        document.getElementById("discovery-content").classList.remove("loading");
+      });
+    }
+    function loadMetrics() {
+      fetchJson("/metrics?limit=20").then(res => {
+        document.getElementById("metrics-meta").textContent = "Count: " + (res.meta && res.meta.count != null ? res.meta.count : res.data.length);
+        document.getElementById("metrics-content").innerHTML = renderTable(res.data, ["asin", "price", "rating", "review_count", "updated_at"]);
+        document.getElementById("metrics-content").classList.remove("loading");
+      }).catch(e => {
+        document.getElementById("metrics-content").innerHTML = "<p class=\"error\">" + e.message + "</p>";
+        document.getElementById("metrics-content").classList.remove("loading");
+      });
+    }
+    function loadScores() {
+      fetchJson("/scores?limit=20").then(res => {
+        document.getElementById("scores-meta").textContent = "Count: " + (res.meta && res.meta.count != null ? res.meta.count : res.data.length);
+        document.getElementById("scores-content").innerHTML = renderTable(res.data, ["asin", "opportunity_score", "demand_score", "competition_score", "scored_at"]);
+        document.getElementById("scores-content").classList.remove("loading");
+      }).catch(e => {
+        document.getElementById("scores-content").innerHTML = "<p class=\"error\">" + e.message + "</p>";
+        document.getElementById("scores-content").classList.remove("loading");
+      });
+    }
+    function loadSavedViews() {
+      const ws = document.getElementById("workspace-id").value.trim();
+      const path = "/saved_views" + (ws ? "?workspace_id=" + ws : "") + "&limit=50";
+      fetchJson(path).then(res => {
+        document.getElementById("saved-views-meta").textContent = "Count: " + (res.meta && res.meta.count != null ? res.meta.count : res.data.length);
+        document.getElementById("saved-views-content").innerHTML = renderTable(res.data, ["id", "name", "workspace_id", "settings"]);
+        document.getElementById("saved-views-content").classList.remove("loading");
+      }).catch(e => {
+        document.getElementById("saved-views-content").innerHTML = "<p class=\"error\">" + e.message + "</p>";
+        document.getElementById("saved-views-content").classList.remove("loading");
+      });
+    }
+    function loadWatchlists() {
+      const ws = document.getElementById("workspace-id").value.trim();
+      const path = "/watchlists" + (ws ? "?workspace_id=" + ws : "") + "&limit=50";
+      fetchJson(path).then(res => {
+        document.getElementById("watchlists-meta").textContent = "Count: " + (res.meta && res.meta.count != null ? res.meta.count : res.data.length);
+        document.getElementById("watchlists-content").innerHTML = renderTable(res.data, ["id", "name", "workspace_id"]);
+        document.getElementById("watchlists-content").classList.remove("loading");
+      }).catch(e => {
+        document.getElementById("watchlists-content").innerHTML = "<p class=\"error\">" + e.message + "</p>";
+        document.getElementById("watchlists-content").classList.remove("loading");
+      });
+    }
+    function loadAll() {
+      loadDiscovery();
+      loadMetrics();
+      loadScores();
+      loadSavedViews();
+      loadWatchlists();
+    }
+    loadAll();
+    document.getElementById("api-key").addEventListener("change", loadAll);
+    document.getElementById("workspace-id").addEventListener("change", loadAll);
+  </script>
+</body>
+</html>

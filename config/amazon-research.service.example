@@ -1,0 +1,23 @@
+# Amazon Research Tool – systemd service (run pipeline once when triggered)
+# Copy to /etc/systemd/system/amazon-research.service and adjust paths/user.
+# Enable: sudo systemctl daemon-reload && sudo systemctl enable amazon-research.timer && sudo systemctl start amazon-research.timer
+# Disable: sudo systemctl stop amazon-research.timer && sudo systemctl disable amazon-research.timer
+#
+# Usage: this service is triggered by amazon-research.timer (see timer file). To run once manually: sudo systemctl start amazon-research.service
+
+[Unit]
+Description=Amazon Research Tool pipeline (discovery, refresh, scoring)
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/amazon-tool
+Environment=PATH=/root/amazon-tool/.venv/bin:/usr/bin
+EnvironmentFile=/root/amazon-tool/.env
+ExecStart=/root/amazon-tool/.venv/bin/python /root/amazon-tool/scripts/run_scheduler_once.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

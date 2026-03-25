@@ -1,0 +1,112 @@
+"""
+Scheduler / queue. Run discovery, refresh, scoring once or by name. run_pipeline() for one-run sequence.
+Step 62: run_worker_loop() processes queued jobs sequentially.
+Step 108: Automated discovery scheduler for category/keyword scans, niche discovery, opportunity alerts.
+"""
+
+from .runner import PIPELINE_ORDER, SchedulerRunner, get_runner
+from .worker_loop import get_last_worker_run_summary, run_worker_loop
+from .discovery_scheduler import (
+    plan_discovery_tasks,
+    enqueue_discovery_schedule,
+    TASK_TYPE_CATEGORY_SCAN,
+    TASK_TYPE_KEYWORD_SCAN,
+    TASK_TYPE_NICHE_DISCOVERY,
+    TASK_TYPE_OPPORTUNITY_ALERT,
+)
+from .intelligent_crawl_scheduler import (
+    get_intelligent_crawl_schedule,
+    to_scheduler_tasks as intelligent_crawl_to_scheduler_tasks,
+    enqueue_intelligent_crawl_schedule,
+    TARGET_CATEGORY,
+    TARGET_KEYWORD,
+    TARGET_ASIN_REFRESH,
+    TARGET_NICHE,
+    TARGET_CLUSTER,
+)
+from .production_loop import (
+    run_production_scheduler_tick,
+    get_production_loop_status,
+    set_cycle_interval,
+    CYCLE_DISCOVERY,
+    CYCLE_REFRESH,
+    CYCLE_SIGNAL_UPDATE,
+    CYCLE_OPPORTUNITY_SCORING,
+    CYCLE_ANOMALY_MONITORING,
+    CYCLE_WORKSPACE_INTELLIGENCE_REFRESH,
+    DEFAULT_INTERVALS,
+)
+from .multi_market_activation import (
+    get_production_markets,
+    get_multi_market_activation,
+    get_activation_targets_for_market,
+    build_category_url_for_market,
+    get_search_url_for_market,
+    to_scheduler_tasks_multi_market,
+    enqueue_multi_market_activation,
+    TARGET_TYPE_CATEGORY,
+    TARGET_TYPE_KEYWORD,
+    ACTIVATION_STATUS_ACTIVATED,
+)
+from .live_discovery_safeguards import (
+    evaluate_target,
+    evaluate_safeguards,
+    filter_activation_targets_with_safeguards,
+    get_safeguarded_activation_targets,
+    get_default_safeguard_context,
+    record_target_scanned,
+    DECISION_ALLOW,
+    DECISION_DEFER,
+    DECISION_REJECT,
+)
+
+__all__ = [
+    "PIPELINE_ORDER",
+    "SchedulerRunner",
+    "get_runner",
+    "get_last_worker_run_summary",
+    "run_worker_loop",
+    "plan_discovery_tasks",
+    "enqueue_discovery_schedule",
+    "TASK_TYPE_CATEGORY_SCAN",
+    "TASK_TYPE_KEYWORD_SCAN",
+    "TASK_TYPE_NICHE_DISCOVERY",
+    "TASK_TYPE_OPPORTUNITY_ALERT",
+    "get_intelligent_crawl_schedule",
+    "intelligent_crawl_to_scheduler_tasks",
+    "enqueue_intelligent_crawl_schedule",
+    "TARGET_CATEGORY",
+    "TARGET_KEYWORD",
+    "TARGET_ASIN_REFRESH",
+    "TARGET_NICHE",
+    "TARGET_CLUSTER",
+    "run_production_scheduler_tick",
+    "get_production_loop_status",
+    "set_cycle_interval",
+    "CYCLE_DISCOVERY",
+    "CYCLE_REFRESH",
+    "CYCLE_SIGNAL_UPDATE",
+    "CYCLE_OPPORTUNITY_SCORING",
+    "CYCLE_ANOMALY_MONITORING",
+    "CYCLE_WORKSPACE_INTELLIGENCE_REFRESH",
+    "DEFAULT_INTERVALS",
+    "get_production_markets",
+    "get_multi_market_activation",
+    "get_activation_targets_for_market",
+    "build_category_url_for_market",
+    "get_search_url_for_market",
+    "to_scheduler_tasks_multi_market",
+    "enqueue_multi_market_activation",
+    "TARGET_TYPE_CATEGORY",
+    "TARGET_TYPE_KEYWORD",
+    "ACTIVATION_STATUS_ACTIVATED",
+    "evaluate_target",
+    "evaluate_safeguards",
+    "filter_activation_targets_with_safeguards",
+    "get_safeguarded_activation_targets",
+    "get_default_safeguard_context",
+    "record_target_scanned",
+    "DECISION_ALLOW",
+    "DECISION_DEFER",
+    "DECISION_REJECT",
+]

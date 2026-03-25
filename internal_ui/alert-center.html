@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alert Center – Workspace</title>
+  <link rel="stylesheet" href="/internal_ui/workspace-shared.css">
+  <script src="/internal_ui/workspace-feature-flags.js"></script>
+  <script src="/internal_ui/workspace-analytics.js"></script>
+  <style>
+    :root { --card-bg: var(--ws-card-bg); --border: var(--ws-border); --text: var(--ws-text); --muted: var(--ws-muted); --primary: var(--ws-primary); --radius-md: var(--ws-radius-md); --space-md: var(--ws-space-md); }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); }
+    .page-header { margin-bottom: var(--space-md); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .page-header h1 { margin: 0 0 var(--ws-space-xs) 0; font-size: var(--ws-heading-size); }
+    .page-header .meta { color: var(--muted); font-size: 0.875rem; }
+    .controls { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .controls label { display: flex; align-items: center; gap: 0.25rem; }
+    .controls input[type="number"] { width: 5rem; }
+    .filters { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    .filters select { padding: 0.25rem 0.5rem; }
+    .alert-list { list-style: none; margin: 0; padding: 0; }
+    .alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+    .alert-item.unread { background: #f0f7ff; }
+    .alert-item .alert-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .alert-item .alert-title { font-weight: 600; }
+    .badge, .ws-badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: var(--ws-radius-sm); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
+    .badge-high { background: #f8d7da; color: #721c24; }
+    .badge-medium { background: #fff3cd; color: #856404; }
+    .badge-low { background: #e2e3e5; color: #383d41; }
+    .alert-item .alert-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.2rem; }
+    .alert-item .alert-meta { color: var(--muted); font-size: 0.8rem; }
+    .btn-mark-read, .ws-btn-secondary { padding: 0.2rem 0.5rem; font-size: 0.8rem; border-radius: var(--ws-radius-sm); cursor: pointer; }
+    .btn-mark-read { color: var(--primary); background: transparent; border: 1px solid var(--primary); }
+    .btn-mark-read:hover { background: #e7f1ff; }
+    .btn-mark-read:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loading, .dashboard-loading-state { color: var(--muted); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .error, .dashboard-error-state { color: var(--ws-error); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .empty-state, .dashboard-empty-state { color: var(--muted); font-style: italic; padding: var(--ws-card-padding); text-align: center; font-size: var(--ws-meta-size); }
+    nav { margin-bottom: 1rem; }
+    nav a { margin-right: 1rem; color: var(--primary); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .workspace-header { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    .workspace-nav { margin: 0; }
+    .workspace-nav a.active { font-weight: 700; color: var(--text); pointer-events: none; }
+    .workspace-main { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+  </style>
+</head>
+<body class="workspace-app">
+  <header class="workspace-header">
+    <nav class="workspace-nav" id="workspace-nav" aria-label="Workspace">
+      <a href="/workflow">Workflow</a><a href="/workspace-overview">Dashboard</a><a href="/portfolio">Portfolio</a><a href="/alert-center" class="active">Alerts</a><a href="/create-workspace">Create workspace</a><a href="/settings">Settings</a><a href="/workspace-preferences">Workspace preferences</a>
+    </nav>
+  </header>
+  <main class="workspace-main">
+  <div id="alert-center-disabled" class="empty-state" style="display:none; padding:1.5rem;">Alert center is currently disabled.</div>
+  <div id="alert-center-main">
+  <div class="page-header">
+    <h1 id="page-title">Alert center</h1>
+    <p class="meta" id="page-meta">Set workspace ID and API key, then load.</p>
+  </div>
+  <div class="controls">
+    <label>API key: <input type="password" id="api-key" placeholder="optional" /></label>
+    <label>Workspace ID: <input type="number" id="workspace-id" placeholder="e.g. 1" /></label>
+    <button type="button" id="btn-load">Load alerts</button>
+  </div>
+
+  <div id="alert-center-root">
+    <div id="alert-center-loading" class="loading dashboard-loading-state" style="display:none;">Loading alerts…</div>
+    <div id="alert-center-error" class="error dashboard-error-state" style="display:none;"></div>
+    <div id="alert-center-content" style="display:none;">
+      <div class="filters" id="alert-filters">
+        <label>Type: <select id="filter-type"><option value="">All</option><option value="high_potential">High potential</option></select></label>
+        <label>Status: <select id="filter-read"><option value="">All</option><option value="unread">Unread</option><option value="read">Read</option></select></label>
+        <button type="button" id="btn-apply-filters">Apply</button>
+      </div>
+      <ul class="alert-list" id="alert-list"></ul>
+      <div id="alert-empty" class="empty-state dashboard-empty-state" style="display:none;">No alerts. Load with filters or wait for new alerts.</div>
+    </div>
+  </div>
+  </div>
+  </main>
+
+  <script>
+    (function() {
+      window.__analyticsApiKey = function() { var e = document.getElementById("api-key"); return e ? e.value.trim() : ""; };
+      function el(id) { return document.getElementById(id); }
+      function safe(obj, key, def) { return (obj && obj[key] !== undefined && obj[key] !== null) ? obj[key] : def; }
+      function headers() {
+        var h = {};
+        var key = (el("api-key") && el("api-key").value) ? el("api-key").value.trim() : "";
+        if (key) h["X-API-Key"] = key;
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (ws) h["X-Workspace-Id"] = ws;
+        return h;
+      }
+      function showLoading() {
+        if (el("alert-center-loading")) el("alert-center-loading").style.display = "block";
+        if (el("alert-center-error")) el("alert-center-error").style.display = "none";
+        if (el("alert-center-content")) el("alert-center-content").style.display = "none";
+      }
+      function showError(msg) {
+        if (el("alert-center-loading")) el("alert-center-loading").style.display = "none";
+        if (el("alert-center-content")) el("alert-center-content").style.display = "none";
+        if (el("alert-center-error")) { el("alert-center-error").textContent = msg || "Failed to load alerts."; el("alert-center-error").style.display = "block"; }
+      }
+      function showContent() {
+        if (el("alert-center-loading")) el("alert-center-loading").style.display = "none";
+        if (el("alert-center-error")) el("alert-center-error").style.display = "none";
+        if (el("alert-center-content")) el("alert-center-content").style.display = "block";
+      }
+      function formatDate(v) {
+        if (!v) return "—";
+        if (typeof v !== "string") return v;
+        return v.slice(0, 19).replace("T", " ");
+      }
+      function severityClass(s) {
+        s = (s || "").toLowerCase();
+        if (s === "high") return "badge-high";
+        if (s === "medium") return "badge-medium";
+        return "badge-low";
+      }
+      function renderList(items) {
+        var listEl = el("alert-list");
+        var emptyEl = el("alert-empty");
+        if (!listEl) return;
+        var list = Array.isArray(items) ? items : [];
+        if (emptyEl) emptyEl.style.display = list.length ? "none" : "block";
+        listEl.style.display = list.length ? "block" : "none";
+        listEl.innerHTML = "";
+        list.forEach(function(a) {
+          var id = safe(a, "id", "");
+          var alertType = safe(a, "alert_type", "—");
+          var severity = safe(a, "severity", "low");
+          var title = safe(a, "title", "Alert");
+          var desc = (safe(a, "description", "") || "").slice(0, 300);
+          var recorded = formatDate(a.recorded_at);
+          var readAt = safe(a, "read_at", null);
+          var unread = !readAt;
+          var li = document.createElement("li");
+          li.className = "alert-item" + (unread ? " unread" : "");
+          li.innerHTML =
+            "<div class=\"alert-header\">" +
+            "<span class=\"alert-title\">" + (title || "Alert") + "</span>" +
+            "<span class=\"badge " + severityClass(severity) + "\">" + (severity || "low") + "</span>" +
+            "<span class=\"badge badge-low\">" + (alertType || "—") + "</span>" +
+            (unread ? "<button type=\"button\" class=\"btn-mark-read\" data-alert-id=\"" + id + "\">Mark read</button>" : "") +
+            "</div>" +
+            (desc ? "<div class=\"alert-desc\">" + desc + "</div>" : "") +
+            "<div class=\"alert-meta\">" + recorded + "</div>";
+          listEl.appendChild(li);
+        });
+        listEl.querySelectorAll(".btn-mark-read").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var alertId = btn.getAttribute("data-alert-id");
+            if (!alertId) return;
+            markRead(alertId, btn);
+          });
+        });
+      }
+      function markRead(alertId, btnEl) {
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (!ws) { showError("Workspace ID required."); return; }
+        if (btnEl) { btnEl.disabled = true; btnEl.textContent = "…"; }
+        var url = "/api/workspaces/" + encodeURIComponent(ws) + "/alerts/" + encodeURIComponent(alertId) + "/read";
+        fetch(url, { method: "PATCH", headers: headers() })
+          .then(function(r) { return r.json(); })
+          .then(function(body) {
+            var data = safe(body, "data", {});
+            if (data && data.read) {
+              if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("alert_marked_read"); } catch (e) {}
+              loadAlerts();
+            } else {
+              if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark read"; }
+            }
+          })
+          .catch(function() {
+            if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Mark read"; }
+          });
+      }
+      function loadAlerts() {
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (!ws) { showError("Workspace ID is required."); return; }
+        showLoading();
+        var typeFilter = (el("filter-type") && el("filter-type").value) ? el("filter-type").value.trim() : "";
+        var readFilter = (el("filter-read") && el("filter-read").value) ? el("filter-read").value.trim() : "";
+        var url = "/api/workspaces/" + encodeURIComponent(ws) + "/alerts?limit=100";
+        if (typeFilter) url += "&alert_type=" + encodeURIComponent(typeFilter);
+        if (readFilter) url += "&read=" + encodeURIComponent(readFilter);
+        fetch(url, { headers: headers() })
+          .then(function(r) {
+            if (!r.ok) throw new Error(r.status + " " + r.statusText);
+            return r.json();
+          })
+          .then(function(body) {
+            var data = (body && body.data) != null ? body.data : (body.error ? null : []);
+            if (body && body.error && !Array.isArray(data)) {
+              showError(body.error);
+              return;
+            }
+            showContent();
+            renderList(Array.isArray(data) ? data : []);
+            if (el("page-meta")) el("page-meta").textContent = "Workspace " + ws + " · " + (Array.isArray(data) ? data.length : 0) + " alerts";
+          })
+          .catch(function(e) {
+            showError(e && e.message ? e.message : "Request failed.");
+          });
+      }
+      if (el("btn-load")) el("btn-load").addEventListener("click", loadAlerts);
+      if (el("btn-apply-filters")) el("btn-apply-filters").addEventListener("click", loadAlerts);
+      if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackPageView) try { window.trackPageView("alerts_page_viewed"); } catch (e) {}
+      setTimeout(function() {
+        if (window.isFeatureEnabled && !window.isFeatureEnabled("alert_center_enabled")) {
+          var d = document.getElementById("alert-center-disabled");
+          var m = document.getElementById("alert-center-main");
+          if (d) d.style.display = "block";
+          if (m) m.style.display = "none";
+        }
+      }, 400);
+    })();
+  </script>
+</body>
+</html>

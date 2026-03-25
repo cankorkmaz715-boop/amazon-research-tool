@@ -1,0 +1,15 @@
+# Amazon Research Tool – systemd timer (conservative: once per day at 2:00 AM)
+# Copy to /etc/systemd/system/amazon-research.timer and ensure amazon-research.service is installed.
+# Enable: sudo systemctl daemon-reload && sudo systemctl enable amazon-research.timer && sudo systemctl start amazon-research.timer
+# Disable: sudo systemctl stop amazon-research.timer && sudo systemctl disable amazon-research.timer
+# Status: sudo systemctl list-timers amazon-research.timer
+
+[Unit]
+Description=Run Amazon Research pipeline daily
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

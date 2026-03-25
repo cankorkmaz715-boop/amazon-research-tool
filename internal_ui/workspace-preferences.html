@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workspace preferences</title>
+  <link rel="stylesheet" href="/internal_ui/workspace-shared.css">
+  <script src="/internal_ui/workspace-feature-flags.js"></script>
+  <style>
+    :root { --card-bg: var(--ws-card-bg); --border: var(--ws-border); --text: var(--ws-text); --muted: var(--ws-muted); --radius-md: var(--ws-radius-md); }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); }
+    .workspace-header { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    .workspace-nav { margin: 0; }
+    .workspace-nav a.active { font-weight: 700; color: var(--text); pointer-events: none; }
+    .workspace-main { max-width: 720px; margin: 0 auto; padding: 0 1rem; }
+    .page-header { margin-bottom: 1rem; }
+    .page-header h1 { font-size: var(--ws-heading-size); margin: 0 0 0.25rem 0; }
+    .page-header .meta { color: var(--muted); font-size: 0.875rem; }
+    .prefs-context { margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 0.875rem; }
+    .prefs-context label { margin-right: 0.5rem; }
+    .prefs-context input[type="number"] { width: 5rem; margin-right: 0.5rem; }
+    .settings-section { margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card-bg); box-shadow: var(--ws-shadow-card); }
+    .settings-section-title { padding: 0.75rem 1rem; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border); background: var(--card-bg); }
+    .settings-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); gap: 0.75rem; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-weight: 500; font-size: 0.9rem; }
+    .settings-row-desc { width: 100%; font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }
+    .settings-toggle { width: 2.5rem; height: 1.25rem; border-radius: 999px; background: var(--border); cursor: pointer; position: relative; flex-shrink: 0; }
+    .settings-toggle.on { background: var(--ws-primary); }
+    .settings-toggle::after { content: ""; position: absolute; width: 1rem; height: 1rem; border-radius: 50%; background: #fff; top: 0.125rem; left: 0.125rem; transition: left 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .settings-toggle.on::after { left: 1.25rem; }
+    .settings-select { padding: 0.35rem 0.5rem; border-radius: var(--ws-radius-sm); border: 1px solid var(--border); font-size: 0.875rem; }
+    .prefs-empty { padding: 2rem; text-align: center; color: var(--muted); }
+    .prefs-error { padding: 1rem; color: var(--ws-error); font-size: 0.875rem; display: none; }
+    nav a { margin-right: 1rem; color: var(--ws-primary); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body class="workspace-app">
+  <header class="workspace-header">
+    <nav class="workspace-nav" id="workspace-nav" aria-label="Workspace">
+      <a href="/workflow">Workflow</a><a href="/workspace-overview">Dashboard</a><a href="/portfolio">Portfolio</a><a href="/alert-center">Alerts</a><a href="/create-workspace">Create workspace</a><a href="/settings">Settings</a><a href="/workspace-preferences" class="active">Workspace preferences</a>
+    </nav>
+  </header>
+  <main class="workspace-main">
+    <div class="page-header">
+      <h1 id="page-title">Workspace preferences</h1>
+      <p class="meta" id="page-meta">Per-workspace UI and display options. Stored locally by workspace.</p>
+    </div>
+
+    <div id="prefs-context" class="prefs-context">
+      <label>Workspace ID: <input type="number" id="workspace-id" placeholder="e.g. 1" aria-label="Workspace ID" /></label>
+      <p class="meta" style="margin:0.5rem 0 0 0;">Preferences apply only to the workspace you enter. Change the ID to edit another workspace.</p>
+    </div>
+
+    <div id="prefs-empty" class="prefs-empty">
+      <p>Enter a workspace ID above to view and edit preferences for that workspace.</p>
+    </div>
+
+    <div id="prefs-form" style="display:none;">
+      <section class="settings-section" id="section-display" aria-labelledby="section-display-title">
+        <h2 id="section-display-title" class="settings-section-title">Display</h2>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Dashboard density</div>
+            <div class="settings-row-desc">Compact or comfortable layout for this workspace.</div>
+          </div>
+          <select id="wp-density" class="settings-select" aria-label="Dashboard density">
+            <option value="comfortable">Comfortable</option>
+            <option value="compact">Compact</option>
+          </select>
+        </div>
+      </section>
+      <section class="settings-section" id="section-panels" aria-labelledby="section-panels-title">
+        <h2 id="section-panels-title" class="settings-section-title">Panels</h2>
+        <div class="settings-row" id="row-copilot">
+          <div>
+            <div class="settings-row-label">Show Copilot context panel</div>
+            <div class="settings-row-desc">Show the Copilot context section on the dashboard.</div>
+          </div>
+          <button type="button" id="toggle-copilot" class="settings-toggle" aria-pressed="true" aria-label="Toggle Copilot panel"></button>
+        </div>
+        <div class="settings-row" id="row-demo-hints">
+          <div>
+            <div class="settings-row-label">Show demo hints when empty</div>
+            <div class="settings-row-desc">Show helpful hints in empty sections when workspace has no data yet.</div>
+          </div>
+          <button type="button" id="toggle-demo-hints" class="settings-toggle" aria-pressed="true" aria-label="Toggle demo hints"></button>
+        </div>
+      </section>
+      <section class="settings-section" id="section-nav" aria-labelledby="section-nav-title">
+        <h2 id="section-nav-title" class="settings-section-title">Navigation</h2>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">Preferred landing section</div>
+            <div class="settings-row-desc">Which dashboard section to emphasize when opening this workspace.</div>
+          </div>
+          <select id="wp-landing" class="settings-select" aria-label="Landing section">
+            <option value="overview">Overview</option>
+            <option value="opportunities">Opportunities</option>
+            <option value="insights">Insights</option>
+            <option value="copilot">Copilot</option>
+          </select>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (function() {
+      function el(id) { return document.getElementById(id); }
+      function getWsId() {
+        var inp = el("workspace-id");
+        if (!inp || inp.value === "") return null;
+        var n = parseInt(inp.value, 10);
+        return isNaN(n) ? null : n;
+      }
+      function prefs(wsId) { return window.getWorkspacePreferences ? window.getWorkspacePreferences(wsId) : {}; }
+      function getPref(wsId, key) { return window.getWorkspacePreference ? window.getWorkspacePreference(wsId, key) : null; }
+      function setPref(wsId, key, value) { if (window.setWorkspacePreference) window.setWorkspacePreference(wsId, key, value); }
+      function flag(name) { return window.isFeatureEnabled ? window.isFeatureEnabled(name) : true; }
+
+      function setToggleState(btn, on) {
+        if (!btn) return;
+        btn.classList.toggle("on", !!on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+      function getToggleState(btn) { return btn && btn.classList.contains("on"); }
+
+      function loadForm(wsId) {
+        if (wsId == null) return;
+        var density = getPref(wsId, "dashboard_density");
+        var selD = el("wp-density");
+        if (selD) selD.value = (density === "compact" || density === "comfortable") ? density : "comfortable";
+        var copilot = getPref(wsId, "copilot_visible");
+        var btnCopilot = el("toggle-copilot");
+        if (btnCopilot) setToggleState(btnCopilot, copilot !== null && copilot !== undefined ? !!copilot : true);
+        var demoHints = getPref(wsId, "demo_hints_visible");
+        var btnDemo = el("toggle-demo-hints");
+        if (btnDemo) setToggleState(btnDemo, demoHints !== null && demoHints !== undefined ? !!demoHints : true);
+        var landing = getPref(wsId, "landing_section");
+        var selL = el("wp-landing");
+        if (selL) selL.value = ["overview", "opportunities", "insights", "copilot"].indexOf(landing) >= 0 ? landing : "overview";
+      }
+
+      function bindToggles() {
+        var btnCopilot = el("toggle-copilot");
+        if (btnCopilot) btnCopilot.addEventListener("click", function() {
+          var wsId = getWsId(); if (wsId == null) return;
+          var on = !getToggleState(btnCopilot);
+          setToggleState(btnCopilot, on);
+          setPref(wsId, "copilot_visible", on);
+        });
+        var btnDemo = el("toggle-demo-hints");
+        if (btnDemo) btnDemo.addEventListener("click", function() {
+          var wsId = getWsId(); if (wsId == null) return;
+          var on = !getToggleState(btnDemo);
+          setToggleState(btnDemo, on);
+          setPref(wsId, "demo_hints_visible", on);
+        });
+      }
+
+      function bindSelects() {
+        var selD = el("wp-density");
+        if (selD) selD.addEventListener("change", function() {
+          var wsId = getWsId(); if (wsId == null) return;
+          setPref(wsId, "dashboard_density", selD.value === "compact" ? "compact" : "comfortable");
+        });
+        var selL = el("wp-landing");
+        if (selL) selL.addEventListener("change", function() {
+          var wsId = getWsId(); if (wsId == null) return;
+          var v = selL.value;
+          if (["overview", "opportunities", "insights", "copilot"].indexOf(v) >= 0) setPref(wsId, "landing_section", v);
+        });
+      }
+
+      function showForWorkspace(wsId) {
+        var empty = el("prefs-empty");
+        var form = el("prefs-form");
+        if (wsId == null) {
+          if (empty) empty.style.display = "block";
+          if (form) form.style.display = "none";
+        } else {
+          if (empty) empty.style.display = "none";
+          if (form) form.style.display = "block";
+          loadForm(wsId);
+        }
+      }
+
+      bindToggles();
+      bindSelects();
+
+      var inp = el("workspace-id");
+      if (inp) {
+        inp.addEventListener("input", function() { showForWorkspace(getWsId()); });
+        inp.addEventListener("change", function() { showForWorkspace(getWsId()); });
+      }
+      var params = typeof URLSearchParams !== "undefined" ? new URLSearchParams(window.location.search || "") : null;
+      var fromUrl = params && params.get("workspace_id");
+      if (fromUrl) {
+        var n = parseInt(fromUrl, 10);
+        if (!isNaN(n) && inp) { inp.value = fromUrl; showForWorkspace(n); }
+        else showForWorkspace(getWsId());
+      } else {
+        showForWorkspace(getWsId());
+      }
+    })();
+  </script>
+</body>
+</html>

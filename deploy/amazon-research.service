@@ -1,0 +1,14 @@
+[Unit]
+Description=Amazon Research Platform
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/amazon-tool
+ExecStart=/root/amazon-tool/venv/bin/python -m amazon_research.runtime_service
+Restart=always
+RestartSec=5
+Environment=PYTHONPATH=/root/amazon-tool/src
+
+[Install]
+WantedBy=multi-user.target

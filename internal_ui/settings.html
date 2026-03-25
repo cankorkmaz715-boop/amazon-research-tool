@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings</title>
+  <link rel="stylesheet" href="/internal_ui/workspace-shared.css">
+  <script src="/internal_ui/workspace-feature-flags.js"></script>
+  <style>
+    :root { --card-bg: var(--ws-card-bg); --border: var(--ws-border); --text: var(--ws-text); --muted: var(--ws-muted); --radius-md: var(--ws-radius-md); --space-md: var(--ws-space-md); }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); }
+    .workspace-header { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    .workspace-nav { margin: 0; }
+    .workspace-nav a.active { font-weight: 700; color: var(--text); pointer-events: none; }
+    .workspace-main { max-width: 720px; margin: 0 auto; padding: 0 1rem; }
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h1 { font-size: var(--ws-heading-size); margin: 0 0 0.25rem 0; }
+    .page-header .meta { color: var(--muted); font-size: 0.875rem; }
+    .settings-section { margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card-bg); box-shadow: var(--ws-shadow-card); }
+    .settings-section-title { padding: 0.75rem 1rem; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border); background: var(--card-bg); }
+    .settings-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); gap: 0.75rem; }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-weight: 500; font-size: 0.9rem; }
+    .settings-row-desc { width: 100%; font-size: 0.8rem; color: var(--muted); margin-top: 0.15rem; }
+    .settings-toggle { width: 2.5rem; height: 1.25rem; border-radius: 999px; background: var(--border); cursor: pointer; position: relative; flex-shrink: 0; }
+    .settings-toggle.on { background: var(--ws-primary); }
+    .settings-toggle::after { content: ""; position: absolute; width: 1rem; height: 1rem; border-radius: 50%; background: #fff; top: 0.125rem; left: 0.125rem; transition: left 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .settings-toggle.on::after { left: 1.25rem; }
+    .settings-select { padding: 0.35rem 0.5rem; border-radius: var(--ws-radius-sm); border: 1px solid var(--border); font-size: 0.875rem; }
+    .settings-empty { padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    .settings-error { padding: 1rem; color: var(--ws-error); font-size: 0.875rem; display: none; }
+    nav a { margin-right: 1rem; color: var(--ws-primary); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body class="workspace-app">
+  <header class="workspace-header">
+    <nav class="workspace-nav" id="workspace-nav" aria-label="Workspace">
+      <a href="/workflow">Workflow</a><a href="/workspace-overview">Dashboard</a><a href="/portfolio">Portfolio</a><a href="/alert-center">Alerts</a><a href="/create-workspace">Create workspace</a><a href="/settings" class="active">Settings</a><a href="/workspace-preferences">Workspace preferences</a>
+    </nav>
+  </header>
+  <main class="workspace-main">
+    <div class="page-header">
+      <h1 id="page-title">Settings</h1>
+      <p class="meta" id="page-meta">Product and display preferences. Stored locally in your browser.</p>
+    </div>
+
+    <div id="settings-error" class="settings-error"></div>
+
+    <section class="settings-section" id="settings-section-product" aria-labelledby="section-product-title">
+      <h2 id="section-product-title" class="settings-section-title">Product</h2>
+      <div class="settings-row" id="row-walkthrough">
+        <div>
+          <div class="settings-row-label">Walkthrough</div>
+          <div class="settings-row-desc">Show the product tour and &quot;Take a tour&quot; on the dashboard.</div>
+        </div>
+        <button type="button" id="toggle-walkthrough" class="settings-toggle" aria-pressed="true" aria-label="Toggle walkthrough"></button>
+      </div>
+      <div class="settings-row" id="row-onboarding">
+        <div>
+          <div class="settings-row-label">Onboarding</div>
+          <div class="settings-row-desc">Show the getting-started checklist for new workspaces.</div>
+        </div>
+        <button type="button" id="toggle-onboarding" class="settings-toggle" aria-pressed="true" aria-label="Toggle onboarding"></button>
+      </div>
+      <div class="settings-row" id="row-demo" style="display:none;">
+        <div>
+          <div class="settings-row-label">Demo mode preference</div>
+          <div class="settings-row-desc">When allowed by the product, show example data in empty workspaces.</div>
+        </div>
+        <button type="button" id="toggle-demo" class="settings-toggle" aria-pressed="true" aria-label="Toggle demo preference"></button>
+      </div>
+    </section>
+
+    <section class="settings-section" id="settings-section-display" aria-labelledby="section-display-title">
+      <h2 id="section-display-title" class="settings-section-title">Display</h2>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Dashboard density</div>
+          <div class="settings-row-desc">Compact reduces spacing; comfortable uses more padding.</div>
+        </div>
+        <select id="setting-density" class="settings-select" aria-label="Dashboard density">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+        </select>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function() {
+      function el(id) { return document.getElementById(id); }
+      function pref(key) { return window.getUserPreference ? window.getUserPreference(key) : null; }
+      function setPref(key, value) { if (window.setUserPreference) window.setUserPreference(key, value); }
+      function flag(name) { return window.isFeatureEnabled ? window.isFeatureEnabled(name) : true; }
+
+      function setToggleState(btn, on) {
+        if (!btn) return;
+        btn.classList.toggle("on", !!on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      }
+
+      function getToggleState(btn) { return btn && btn.classList.contains("on"); }
+
+      function loadRow(key, toggleId) {
+        var btn = el(toggleId);
+        if (!btn) return;
+        var stored = pref(key);
+        var on = stored !== null && stored !== undefined ? stored === "true" : flag(key);
+        setToggleState(btn, on);
+      }
+
+      function bindToggle(key, toggleId) {
+        var btn = el(toggleId);
+        if (!btn) return;
+        btn.addEventListener("click", function() {
+          var on = !getToggleState(btn);
+          setToggleState(btn, on);
+          setPref(key, on ? "true" : "false");
+        });
+      }
+
+      function loadDensity() {
+        var sel = el("setting-density");
+        if (!sel) return;
+        var v = pref("dashboard_density");
+        if (v === "compact" || v === "comfortable") sel.value = v;
+        else sel.value = "comfortable";
+      }
+
+      function bindDensity() {
+        var sel = el("setting-density");
+        if (!sel) return;
+        sel.addEventListener("change", function() {
+          var v = sel.value === "compact" ? "compact" : "comfortable";
+          setPref("dashboard_density", v);
+        });
+      }
+
+      if (el("row-demo") && flag("demo_mode")) el("row-demo").style.display = "flex";
+      loadRow("walkthrough_enabled", "toggle-walkthrough");
+      loadRow("onboarding_enabled", "toggle-onboarding");
+      loadRow("demo_mode", "toggle-demo");
+      loadDensity();
+      bindToggle("walkthrough_enabled", "toggle-walkthrough");
+      bindToggle("onboarding_enabled", "toggle-onboarding");
+      bindToggle("demo_mode", "toggle-demo");
+      bindDensity();
+    })();
+  </script>
+</body>
+</html>

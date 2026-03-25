@@ -1,0 +1,145 @@
+/**
+ * Step 219: Dashboard polish & UX consistency – shared tokens and primitives.
+ * Used by workspace-overview, portfolio, alert-center.
+ */
+:root {
+  /* Colors (existing) */
+  --ws-card-bg: #f8f9fa;
+  --ws-border: #dee2e6;
+  --ws-text: #212529;
+  --ws-muted: #6c757d;
+  --ws-primary: #0d6efd;
+  --ws-error: #dc3545;
+  --ws-success: #198754;
+  --ws-warning: #fd7e14;
+  /* Spacing */
+  --ws-space-xs: 0.25rem;
+  --ws-space-sm: 0.5rem;
+  --ws-space-md: 1rem;
+  --ws-space-lg: 1.5rem;
+  --ws-section-gap: 1.5rem;
+  /* Card/section */
+  --ws-radius-sm: 4px;
+  --ws-radius-md: 8px;
+  --ws-card-padding: 1rem;
+  --ws-section-title-padding: 0.5rem 1rem;
+  --ws-shadow-card: 0 1px 2px rgba(0,0,0,0.04);
+  /* Typography */
+  --ws-heading-size: 1.5rem;
+  --ws-subheading-size: 0.95rem;
+  --ws-meta-size: 0.875rem;
+  --ws-caption-size: 0.75rem;
+}
+
+/* Shared empty state */
+.dashboard-empty-state,
+.ws-empty-state {
+  color: var(--ws-muted);
+  font-style: italic;
+  padding: var(--ws-card-padding);
+  text-align: center;
+  font-size: var(--ws-meta-size);
+}
+
+/* Shared loading state */
+.dashboard-loading-state,
+.ws-loading-state {
+  color: var(--ws-muted);
+  padding: var(--ws-card-padding);
+  font-size: var(--ws-meta-size);
+}
+
+/* Shared error state */
+.dashboard-error-state,
+.ws-error-state {
+  color: var(--ws-error);
+  padding: var(--ws-card-padding);
+  font-size: var(--ws-meta-size);
+}
+
+/* Shared badge base */
+.ws-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--ws-radius-sm);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Badge variants – priority */
+.ws-badge-priority-high { background: #d4edda; color: #155724; }
+.ws-badge-priority-medium { background: #fff3cd; color: #856404; }
+.ws-badge-priority-low { background: #e2e3e5; color: #383d41; }
+
+/* Badge variants – status */
+.ws-badge-status { background: #cce5ff; color: #004085; }
+.ws-badge-active { background: #d4edda; color: #155724; }
+.ws-badge-archived { background: #e2e3e5; color: #383d41; }
+
+/* Badge variants – risk/severity */
+.ws-badge-high,
+.ws-badge-risk-high { background: #f8d7da; color: #721c24; }
+.ws-badge-medium,
+.ws-badge-risk-medium { background: #fff3cd; color: #856404; }
+.ws-badge-low,
+.ws-badge-risk-low { background: #e2e3e5; color: #383d41; }
+
+/* Badge variants – market */
+.ws-badge-market-enter { background: #d4edda; color: #155724; }
+.ws-badge-market-monitor { background: #cce5ff; color: #004085; }
+.ws-badge-market-defer { background: #e2e3e5; color: #383d41; }
+
+/* Shared section shell */
+.ws-section-shell {
+  margin-bottom: var(--ws-section-gap);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  overflow: hidden;
+  background: var(--ws-card-bg);
+  box-shadow: var(--ws-shadow-card);
+}
+
+.ws-section-title {
+  background: var(--ws-card-bg);
+  padding: var(--ws-section-title-padding);
+  font-size: var(--ws-subheading-size);
+  font-weight: 600;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.ws-section-body {
+  padding: var(--ws-card-padding);
+  font-size: var(--ws-meta-size);
+}
+
+/* Shared action button secondary */
+.ws-btn-secondary {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: var(--ws-radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--ws-border);
+  background: #fff;
+  color: var(--ws-text);
+}
+.ws-btn-secondary:hover { background: var(--ws-card-bg); }
+.ws-btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Primary action button */
+.ws-btn-primary {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: var(--ws-radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--ws-primary);
+  background: var(--ws-primary);
+  color: #fff;
+}
+.ws-btn-primary:hover { filter: brightness(1.05); }
+.ws-btn-primary:focus { outline: 2px solid var(--ws-primary); outline-offset: 1px; }
+
+/* Workspace shell – consistent nav (optional enhancement when used with .workspace-nav) */
+.workspace-app .workspace-nav a:hover { text-decoration: underline; }
+.workspace-app .workspace-nav a:focus { outline: 2px solid var(--ws-primary); outline-offset: 2px; }

@@ -1,0 +1,9 @@
+# Amazon Research Tool – example crontab (conservative: once per day at 2:00 AM)
+# Install: crontab -e  and add ONE of the lines below (adjust path and user).
+# Disable: remove the line or comment it with #.
+#
+# From project root, run pipeline once per day at 2:00 AM:
+# 0 2 * * * cd /root/amazon-tool && /root/amazon-tool/.venv/bin/python scripts/run_scheduler_once.py >> /var/log/amazon-research-cron.log 2>&1
+#
+# Or using python -m (ensure PYTHONPATH):
+# 0 2 * * * cd /root/amazon-tool && PYTHONPATH=/root/amazon-tool/src /root/amazon-tool/.venv/bin/python -m amazon_research.run_scheduler_once >> /var/log/amazon-research-cron.log 2>&1

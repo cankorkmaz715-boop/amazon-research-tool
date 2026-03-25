@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workspace Overview – Dashboard</title>
+  <link rel="stylesheet" href="/internal_ui/workspace-shared.css">
+  <script src="/internal_ui/workspace-feature-flags.js"></script>
+  <script src="/internal_ui/workspace-analytics.js"></script>
+  <style>
+    :root { --card-bg: var(--ws-card-bg); --border: var(--ws-border); --text: var(--ws-text); --muted: var(--ws-muted); --primary: var(--ws-primary); --space-md: var(--ws-space-md); --space-lg: var(--ws-space-lg); --radius-md: var(--ws-radius-md); --section-gap: var(--ws-section-gap); }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); }
+    .dashboard-header { margin-bottom: var(--section-gap); padding-bottom: var(--space-md); border-bottom: 1px solid var(--border); }
+    .dashboard-header h1 { margin: 0 0 var(--ws-space-xs) 0; font-size: var(--ws-heading-size); }
+    .dashboard-header .meta { color: var(--muted); font-size: 0.875rem; }
+    .controls { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .controls label { display: flex; align-items: center; gap: 0.25rem; }
+    .controls input[type="number"] { width: 5rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-md); margin-bottom: var(--section-gap); }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-md) var(--space-md); box-shadow: var(--ws-shadow-card); }
+    .stat-card .value { font-size: 1.25rem; font-weight: 600; }
+    .stat-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.02em; margin-top: 0.15rem; }
+    .section { margin-bottom: var(--section-gap); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--ws-shadow-card); }
+    .section-title { background: var(--card-bg); padding: var(--ws-section-title-padding); font-size: var(--ws-subheading-size); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .section-body { padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .section-body.empty { color: var(--muted); font-style: italic; }
+    .top-items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .top-items-list { list-style: none; margin: 0; padding: 0; }
+    .top-items-list li { padding: 0.35rem 0; border-bottom: 1px solid #eee; }
+    .top-items-list li:last-child { border-bottom: none; }
+    .notices-list { list-style: none; margin: 0; padding: 0; }
+    .notices-list li { padding: 0.4rem 0; color: var(--muted); font-size: 0.85rem; }
+    .health-ok { color: #198754; }
+    .health-fallback { color: #fd7e14; }
+    .loading, .dashboard-loading-state { color: var(--muted); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .error, .dashboard-error-state { color: var(--ws-error); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .opportunity-feed-panel { margin-bottom: var(--section-gap); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--ws-shadow-card); }
+    .opportunity-feed-panel .section-title { background: var(--card-bg); padding: var(--ws-section-title-padding); font-size: var(--ws-subheading-size); font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .opportunity-feed-list { list-style: none; margin: 0; padding: 0; }
+    .opportunity-feed-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; font-size: 0.875rem; }
+    .opportunity-feed-item:last-child { border-bottom: none; }
+    .opportunity-feed-item .feed-item-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.25rem; }
+    .opportunity-feed-item .feed-item-id { font-weight: 600; }
+    .badge, .ws-badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: var(--ws-radius-sm); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
+    .badge-priority-high { background: #d4edda; color: #155724; }
+    .badge-priority-medium { background: #fff3cd; color: #856404; }
+    .badge-priority-low { background: #e2e3e5; color: #383d41; }
+    .badge-status { background: #cce5ff; color: #004085; }
+    .feed-item-rationale { color: var(--muted); margin-bottom: 0.2rem; }
+    .feed-item-action { font-size: 0.8rem; color: var(--primary); }
+    .feed-item-risk { font-size: 0.75rem; color: #fd7e14; }
+    .feed-empty, .dashboard-empty-state { color: var(--muted); font-style: italic; padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .insight-panels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-md); margin-bottom: var(--section-gap); }
+    .insight-panel { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card-bg); box-shadow: var(--ws-shadow-card); }
+    .insight-panel-header { padding: var(--ws-section-title-padding); font-size: var(--ws-subheading-size); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .insight-panel-body { padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .insight-panel-list { list-style: none; margin: 0; padding: 0; }
+    .insight-panel-item { padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+    .insight-panel-item:last-child { border-bottom: none; }
+    .insight-panel-empty, .ws-empty-state { color: var(--muted); font-style: italic; padding: var(--ws-space-sm) 0; font-size: var(--ws-meta-size); }
+    .insight-snippet { color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+    .badge-risk-high { background: #f8d7da; color: #721c24; }
+    .badge-risk-medium { background: #fff3cd; color: #856404; }
+    .badge-risk-low { background: #e2e3e5; color: #383d41; }
+    .badge-market-enter { background: #d4edda; color: #155724; }
+    .badge-market-monitor { background: #cce5ff; color: #004085; }
+    .badge-market-defer { background: #e2e3e5; color: #383d41; }
+    .copilot-context-panel { margin-bottom: var(--section-gap); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card-bg); box-shadow: var(--ws-shadow-card); }
+    .copilot-context-panel .section-title { background: var(--card-bg); padding: var(--ws-section-title-padding); font-size: var(--ws-subheading-size); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .copilot-context-panel .section-body { padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .copilot-context-summary { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .copilot-context-list { list-style: none; margin: 0 0 0.5rem 0; padding: 0; }
+    .copilot-context-list li { padding: 0.2rem 0; border-bottom: 1px solid #eee; }
+    .copilot-context-list li:last-child { border-bottom: none; }
+    .copilot-context-empty { color: var(--muted); font-style: italic; font-size: var(--ws-meta-size); }
+    nav { margin-bottom: 1rem; }
+    nav a { margin-right: 1rem; color: var(--primary); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .workspace-header { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    .workspace-nav { margin: 0; }
+    .workspace-nav a.active { font-weight: 700; color: var(--text); pointer-events: none; }
+    .workspace-main { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+    .dashboard-density-compact .stat-card { padding: 0.5rem 0.75rem; }
+    .dashboard-density-compact .section-body { padding: 0.5rem 1rem; }
+    .dashboard-sections-nav { margin-bottom: 1rem; padding: 0.4rem 0; font-size: 0.875rem; }
+    .dashboard-sections-nav a { margin-right: 1rem; }
+    /* Step 220: Walkthrough overlay */
+    #walkthrough-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 9998; display: none; align-items: center; justify-content: center; }
+    #walkthrough-overlay.walkthrough-visible { display: flex; }
+    #walkthrough-step-card { background: #fff; border-radius: var(--radius-md); box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-width: 420px; padding: 1.25rem; z-index: 9999; }
+    #walkthrough-step-card .walkthrough-title { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.5rem 0; }
+    #walkthrough-step-card .walkthrough-desc { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; line-height: 1.4; }
+    #walkthrough-step-card .walkthrough-action-hint { font-size: 0.8rem; color: var(--primary); margin-bottom: 1rem; }
+    #walkthrough-step-card .walkthrough-nav { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    #walkthrough-step-card .walkthrough-nav .walkthrough-skip { color: var(--muted); font-size: 0.85rem; cursor: pointer; background: none; border: none; }
+    #walkthrough-step-card .walkthrough-nav .walkthrough-skip:hover { text-decoration: underline; }
+    #walkthrough-step-card .walkthrough-nav .walkthrough-prev-next { display: flex; gap: 0.5rem; }
+    .walkthrough-highlight { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .walkthrough-empty-hint { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
+    a.walkthrough-trigger { font-size: 0.85rem; color: var(--primary); margin-left: 0.5rem; cursor: pointer; }
+    .export-wrap { position: relative; display: inline-block; margin-left: 0.5rem; }
+    .export-btn { font-size: 0.85rem; padding: 0.25rem 0.5rem; cursor: pointer; border: 1px solid var(--border); border-radius: var(--ws-radius-sm); background: var(--card-bg); color: var(--text); }
+    .export-btn:hover { background: var(--border); }
+    .export-menu { position: absolute; top: 100%; left: 0; margin-top: 0.25rem; min-width: 10rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--ws-shadow-card); z-index: 10; padding: 0.25rem 0; }
+    .export-menu a { display: block; padding: 0.4rem 0.75rem; font-size: 0.875rem; color: var(--text); text-decoration: none; }
+    .export-menu a:hover { background: var(--border); }
+    #demo-mode-banner { display: none; padding: 0.5rem 1rem; background: #e7f1ff; border: 1px solid var(--primary); border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.875rem; color: var(--text); }
+    #demo-mode-banner.demo-visible { display: block; }
+    /* Step 222: Guided onboarding */
+    #onboarding-panel { display: none; margin-bottom: 1rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--ws-shadow-card); }
+    #onboarding-panel.onboarding-visible { display: block; }
+    #onboarding-panel .onboarding-title { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; }
+    #onboarding-panel .onboarding-progress { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+    #onboarding-checklist { list-style: none; margin: 0 0 0.75rem 0; padding: 0; font-size: 0.875rem; }
+    #onboarding-checklist li { padding: 0.35rem 0; border-bottom: 1px solid #eee; }
+    #onboarding-checklist li:last-child { border-bottom: none; }
+    #onboarding-checklist a { color: var(--primary); text-decoration: none; }
+    #onboarding-checklist a:hover { text-decoration: underline; }
+    #onboarding-dismiss { padding: 0.35rem 0.75rem; font-size: 0.85rem; cursor: pointer; border-radius: var(--ws-radius-sm); border: 1px solid var(--border); background: #fff; color: var(--text); }
+    #onboarding-dismiss:hover { background: var(--card-bg); }
+    a.onboarding-reopen { font-size: 0.85rem; color: var(--primary); margin-left: 0.5rem; cursor: pointer; }
+  </style>
+</head>
+<body class="workspace-app">
+  <header class="workspace-header">
+    <nav class="workspace-nav" id="workspace-nav" aria-label="Workspace">
+      <a href="/workflow">Workflow</a><a href="/workspace-overview" class="active">Dashboard</a><a href="/portfolio">Portfolio</a><a href="/alert-center">Alerts</a><a href="/create-workspace">Create workspace</a><a href="/settings">Settings</a><a href="/workspace-preferences">Workspace preferences</a>
+    </nav>
+  </header>
+  <main class="workspace-main">
+  <div class="dashboard-header">
+    <h1 id="page-title">Workspace overview</h1>
+    <span id="walkthrough-trigger-wrap"><a href="#" id="walkthrough-trigger" class="walkthrough-trigger" aria-label="Take a tour">Take a tour</a><a href="#" id="onboarding-reopen" class="onboarding-reopen" aria-label="Show onboarding" style="display:none;">Onboarding</a></span>
+    <span class="export-wrap" id="export-wrap">
+      <button type="button" id="export-btn" class="export-btn" aria-haspopup="true" aria-expanded="false">Export</button>
+      <div id="export-menu" class="export-menu" role="menu" aria-label="Export options" style="display:none;">
+        <a href="#" role="menuitem" data-export="dashboard" data-format="json">Dashboard (JSON)</a>
+        <a href="#" role="menuitem" data-export="opportunities" data-format="csv">Opportunities (CSV)</a>
+        <a href="#" role="menuitem" data-export="portfolio" data-format="csv">Portfolio (CSV)</a>
+        <a href="#" role="menuitem" data-export="alerts" data-format="csv">Alerts (CSV)</a>
+      </div>
+    </span>
+    <p class="meta" id="page-meta">Set workspace ID and API key, then load.</p>
+  </div>
+  <div id="onboarding-panel" class="onboarding-panel" aria-label="Getting started checklist">
+    <div class="onboarding-title">Getting started</div>
+    <div id="onboarding-progress" class="onboarding-progress">Step 1 of 6</div>
+    <ul id="onboarding-checklist" class="onboarding-checklist"></ul>
+    <button type="button" id="onboarding-dismiss">Dismiss</button>
+  </div>
+  <div class="controls">
+    <label>API key: <input type="password" id="api-key" placeholder="optional" /></label>
+    <label>Workspace ID: <input type="number" id="workspace-id" placeholder="e.g. 1" /></label>
+    <button type="button" id="btn-load">Load dashboard</button>
+  </div>
+
+  <div id="dashboard-root">
+    <div id="dashboard-loading" class="loading dashboard-loading-state">Loading…</div>
+    <div id="dashboard-error" class="error dashboard-error-state" style="display:none;"></div>
+    <div id="dashboard-content" style="display:none;">
+      <div id="demo-mode-banner" class="demo-mode-banner" aria-live="polite">Demo Mode — Showing example workspace insights</div>
+      <nav class="dashboard-sections-nav" id="dashboard-sections-nav" aria-label="On this page">
+        <a href="#overview-stats">Overview</a><a href="#opportunity-feed-panel">Opportunities</a><a href="#insight-panels-grid">Insights</a><a href="#copilot-context-panel">Copilot</a>
+      </nav>
+      <div class="stats-grid" id="overview-stats"></div>
+      <div class="opportunity-feed-panel" id="opportunity-feed-panel">
+        <div class="section-title">Opportunity feed <span id="opportunity-feed-count" class="muted"></span><a href="#section-top-items" id="opportunity-feed-see-more" style="font-weight: normal; font-size: 0.85rem;">See more</a></div>
+        <div id="opportunity-feed-loading" class="loading" style="display:none; padding: 1rem;">Loading opportunities…</div>
+        <div id="opportunity-feed-error" class="error" style="display:none;"></div>
+        <ul class="opportunity-feed-list" id="opportunity-feed-list"></ul>
+        <div id="opportunity-feed-empty" class="feed-empty dashboard-empty-state" style="display:none;">No opportunities in feed. Load dashboard to see top opportunities.<span class="walkthrough-empty-hint" id="walkthrough-empty-hint-opportunities">Your opportunity feed will show discovered product opportunities once data is available.</span></div>
+      </div>
+      <div class="insight-panels-grid" id="insight-panels-grid">
+        <div class="insight-panel" id="strategy-insights-panel">
+          <div class="insight-panel-header">Strategy insights</div>
+          <div class="insight-panel-body" id="strategy-insights-body">
+            <div id="strategy-insights-empty" class="insight-panel-empty">No strategy data. Load dashboard.<span class="walkthrough-empty-hint">Strategy insights appear when the system has classified opportunities (act now, monitor, deprioritize).</span></div>
+            <ul class="insight-panel-list" id="strategy-insights-list"></ul>
+          </div>
+        </div>
+        <div class="insight-panel" id="risk-insights-panel">
+          <div class="insight-panel-header">Risk insights</div>
+          <div class="insight-panel-body" id="risk-insights-body">
+            <div id="risk-insights-empty" class="insight-panel-empty">No risk data. Load dashboard.<span class="walkthrough-empty-hint">Risk insights appear when signals detect market or portfolio risks.</span></div>
+            <ul class="insight-panel-list" id="risk-insights-list"></ul>
+          </div>
+        </div>
+        <div class="insight-panel" id="market-insights-panel">
+          <div class="insight-panel-header">Market insights</div>
+          <div class="insight-panel-body" id="market-insights-body">
+            <div id="market-insights-empty" class="insight-panel-empty">No market data. Load dashboard.</div>
+            <ul class="insight-panel-list" id="market-insights-list"></ul>
+          </div>
+        </div>
+      </div>
+      <div class="copilot-context-panel section" id="copilot-context-panel">
+        <div class="section-title">Copilot context</div>
+        <div class="section-body" id="copilot-context-body">
+          <div id="copilot-context-empty" class="copilot-context-empty">No context. Load dashboard.<span class="walkthrough-empty-hint">Copilot context shows what the system sees: opportunities, risks, and recommended actions.</span></div>
+          <div id="copilot-context-summary" class="copilot-context-summary"></div>
+          <div id="copilot-context-signals-wrap" style="display:none;">
+            <strong>Top strategic signals</strong>
+            <ul class="copilot-context-list" id="copilot-context-signals"></ul>
+          </div>
+          <div id="copilot-context-opportunities-wrap" style="display:none;">
+            <strong>Relevant opportunities</strong>
+            <ul class="copilot-context-list" id="copilot-context-opportunities"></ul>
+          </div>
+          <div id="copilot-context-risks-wrap" style="display:none;">
+            <strong>Relevant risks</strong>
+            <ul class="copilot-context-list" id="copilot-context-risks"></ul>
+          </div>
+          <div id="copilot-context-actions-wrap" style="display:none;">
+            <strong>Recommended actions</strong>
+            <ul class="copilot-context-list" id="copilot-context-actions"></ul>
+          </div>
+          <div id="copilot-context-markets-wrap" style="display:none;">
+            <strong>Market context</strong>
+            <ul class="copilot-context-list" id="copilot-context-markets"></ul>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Intelligence & strategy</div>
+        <div class="section-body" id="section-intelligence"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Portfolio summary</div>
+        <div class="section-body" id="section-portfolio"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Risk summary</div>
+        <div class="section-body" id="section-risk"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Market summary</div>
+        <div class="section-body" id="section-market"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Recent activity</div>
+        <div class="section-body" id="section-activity"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Top items & actions</div>
+        <div class="section-body" id="section-top-items"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Notices & health</div>
+        <div class="section-body" id="section-notices"></div>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <div id="walkthrough-overlay" class="walkthrough-overlay" aria-hidden="true">
+    <div id="walkthrough-step-card">
+      <div id="walkthrough-step-title" class="walkthrough-title"></div>
+      <div id="walkthrough-step-desc" class="walkthrough-desc"></div>
+      <div id="walkthrough-step-action" class="walkthrough-action-hint" style="display:none;"></div>
+      <div class="walkthrough-nav">
+        <button type="button" id="walkthrough-skip" class="walkthrough-skip">Skip tour</button>
+        <div class="walkthrough-prev-next">
+          <button type="button" id="walkthrough-prev">Previous</button>
+          <button type="button" id="walkthrough-next">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      window.__analyticsApiKey = function() { var e = document.getElementById("api-key"); return e ? e.value.trim() : ""; };
+      function el(id) { return document.getElementById(id); }
+      function safe(obj, key, def) { return (obj && obj[key] !== undefined && obj[key] !== null) ? obj[key] : def; }
+      function headers() {
+        var h = {};
+        var key = (el("api-key") && el("api-key").value) ? el("api-key").value.trim() : "";
+        if (key) h["X-API-Key"] = key;
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (ws) h["X-Workspace-Id"] = ws;
+        return h;
+      }
+      function showLoading() {
+        if (el("dashboard-loading")) el("dashboard-loading").style.display = "block";
+        if (el("dashboard-error")) el("dashboard-error").style.display = "none";
+        if (el("dashboard-content")) el("dashboard-content").style.display = "none";
+      }
+      function showError(msg) {
+        if (el("dashboard-loading")) el("dashboard-loading").style.display = "none";
+        if (el("dashboard-content")) el("dashboard-content").style.display = "none";
+        if (el("dashboard-error")) { el("dashboard-error").textContent = msg || "Failed to load dashboard."; el("dashboard-error").style.display = "block"; }
+      }
+      function showContent() {
+        if (el("dashboard-loading")) el("dashboard-loading").style.display = "none";
+        if (el("dashboard-error")) el("dashboard-error").style.display = "none";
+        if (el("dashboard-content")) el("dashboard-content").style.display = "block";
+      }
+      function renderOverviewStats(payload) {
+        var ov = safe(payload, "overview", {});
+        var html = "";
+        var stats = [
+          [safe(ov, "total_opportunities", 0), "Opportunities"],
+          [safe(ov, "high_priority_opportunities", 0), "High priority"],
+          [safe(ov, "total_portfolio_items", 0), "Portfolio items"],
+          [safe(ov, "high_risk_item_count", 0), "High risk items"],
+          [safe(ov, "top_strategic_score_count", 0), "Top strategic"],
+        ];
+        stats.forEach(function(s) {
+          html += "<div class=\"stat-card\"><div class=\"value\">" + Number(s[0]) + "</div><div class=\"label\">" + (s[1] || "") + "</div></div>";
+        });
+        var elStats = el("overview-stats");
+        if (elStats) elStats.innerHTML = html || "<div class=\"stat-card\"><div class=\"value\">—</div><div class=\"label\">No data</div></div>";
+      }
+      function renderOpportunityFeed(payload) {
+        var listEl = el("opportunity-feed-list");
+        var emptyEl = el("opportunity-feed-empty");
+        var countEl = el("opportunity-feed-count");
+        var ti = safe(payload, "top_items", {});
+        var items = Array.isArray(safe(ti, "top_opportunities", [])) ? ti.top_opportunities : [];
+        var limit = 10;
+        if (countEl) countEl.textContent = items.length ? "(" + Math.min(items.length, limit) + ")" : "";
+        if (emptyEl) emptyEl.style.display = items.length ? "none" : "block";
+        if (listEl) {
+          listEl.style.display = items.length ? "block" : "none";
+          var listHtml = "";
+          items.slice(0, limit).forEach(function(o) {
+            var id = safe(o, "opportunity_id", "—");
+            var status = safe(o, "strategy_status", "");
+            var priority = (safe(o, "priority_level", "") || "").toLowerCase();
+            var score = o.opportunity_score != null ? Number(o.opportunity_score).toFixed(1) : "";
+            var rationale = (safe(o, "rationale", "") || "").slice(0, 160);
+            var action = safe(o, "recommended_action", "");
+            var riskNotes = Array.isArray(o.risk_notes) ? o.risk_notes : [];
+            var badgeClass = "badge-priority-low";
+            if (priority === "high") badgeClass = "badge-priority-high";
+            else if (priority === "medium") badgeClass = "badge-priority-medium";
+            listHtml += "<li class=\"opportunity-feed-item\">";
+            listHtml += "<div class=\"feed-item-header\">";
+            listHtml += "<span class=\"feed-item-id\">" + (id || "—") + "</span>";
+            if (status) listHtml += "<span class=\"badge badge-status\">" + (status || "") + "</span>";
+            if (priority) listHtml += "<span class=\"badge " + badgeClass + "\">" + priority + "</span>";
+            if (score !== "") listHtml += "<span>" + score + "</span>";
+            listHtml += "</div>";
+            if (rationale) listHtml += "<div class=\"feed-item-rationale\">" + (rationale || "") + "</div>";
+            if (action) listHtml += "<div class=\"feed-item-action\">" + (action || "") + "</div>";
+            if (riskNotes.length) listHtml += "<div class=\"feed-item-risk\">" + (riskNotes.join(" · ") || "").slice(0, 120) + "</div>";
+            listHtml += "</li>";
+          });
+          listEl.innerHTML = listHtml;
+        }
+      }
+      function renderStrategyInsightsPanel(payload) {
+        var emptyEl = el("strategy-insights-empty");
+        var listEl = el("strategy-insights-list");
+        if (!listEl) return;
+        var strat = safe(payload, "strategy_summary", {});
+        var ss = safe(strat, "strategy_summary", {});
+        var actNow = safe(strat, "act_now_count", 0);
+        var topActions = Array.isArray(safe(payload, "top_actions", [])) ? payload.top_actions : [];
+        var ti = safe(payload, "top_items", {});
+        var opps = Array.isArray(safe(ti, "top_opportunities", [])) ? ti.top_opportunities : [];
+        var items = [];
+        if (actNow > 0 || Object.keys(ss).length) items.push("High-impact (act now): " + actNow);
+        if (Object.keys(ss).length) {
+          var mon = safe(ss, "monitor_count", 0);
+          var dep = safe(ss, "deprioritized_count", 0);
+          if (mon) items.push("Monitor: " + mon);
+          if (dep) items.push("Deprioritize: " + dep);
+        }
+        topActions.slice(0, 5).forEach(function(a) {
+          items.push(typeof a === "string" ? a : (a && a.label) || "");
+        });
+        opps.slice(0, 3).forEach(function(o) {
+          var r = (safe(o, "rationale", "") || "").slice(0, 80);
+          if (r) items.push(r);
+        });
+        var hasContent = items.some(function(x) { return (x || "").trim().length > 0; });
+        if (emptyEl) emptyEl.style.display = hasContent ? "none" : "block";
+        listEl.style.display = hasContent ? "block" : "none";
+        listEl.innerHTML = "";
+        items.forEach(function(t) {
+          if (!(t || "").trim()) return;
+          var li = document.createElement("li");
+          li.className = "insight-panel-item";
+          li.textContent = (t || "").slice(0, 200);
+          listEl.appendChild(li);
+        });
+      }
+      function renderRiskInsightsPanel(payload) {
+        var emptyEl = el("risk-insights-empty");
+        var listEl = el("risk-insights-list");
+        if (!listEl) return;
+        var risk = safe(payload, "risk_summary", {});
+        var highCount = safe(risk, "high_risk_count", 0);
+        var rs = safe(risk, "risk_summary", {});
+        var ti = safe(payload, "top_items", {});
+        var risks = Array.isArray(safe(ti, "top_risks", [])) ? ti.top_risks : [];
+        var notices = Array.isArray(safe(payload, "notices", [])) ? payload.notices : [];
+        var items = [];
+        if (highCount > 0) items.push("High-risk items: " + highCount);
+        if (rs && typeof rs === "object" && Object.keys(rs).length) items.push("Summary: " + JSON.stringify(rs).slice(0, 100));
+        risks.slice(0, 5).forEach(function(r) {
+          var level = (safe(r, "risk_level", "") || "").toLowerCase();
+          var type = safe(r, "risk_type", "");
+          var label = (type || level || "Risk") + (level ? " (" + level + ")" : "");
+          var rationale = (safe(r, "rationale", "") || "").slice(0, 80);
+          items.push(label + (rationale ? " — " + rationale : ""));
+        });
+        notices.slice(0, 3).forEach(function(n) {
+          items.push(typeof n === "string" ? n : (n && n.message) || JSON.stringify(n).slice(0, 80));
+        });
+        var hasContent = items.some(function(x) { return (x || "").trim().length > 0; });
+        if (emptyEl) emptyEl.style.display = hasContent ? "none" : "block";
+        listEl.style.display = hasContent ? "block" : "none";
+        listEl.innerHTML = "";
+        items.forEach(function(t) {
+          if (!(t || "").trim()) return;
+          var li = document.createElement("li");
+          li.className = "insight-panel-item";
+          li.textContent = (t || "").slice(0, 200);
+          listEl.appendChild(li);
+        });
+      }
+      function renderMarketInsightsPanel(payload) {
+        var emptyEl = el("market-insights-empty");
+        var listEl = el("market-insights-list");
+        if (!listEl) return;
+        var m = safe(payload, "market_summary", {});
+        var mes = safe(m, "market_entry_summary", {});
+        var ti = safe(payload, "top_items", {});
+        var markets = Array.isArray(safe(ti, "top_markets", [])) ? ti.top_markets : [];
+        var items = [];
+        if (mes && typeof mes === "object" && Object.keys(mes).length) items.push("Markets: " + JSON.stringify(mes).slice(0, 120));
+        markets.forEach(function(s) {
+          var status = (safe(s, "recommendation_status", "") || "").toLowerCase();
+          var key = safe(s, "market_key", "");
+          var rationale = (safe(s, "rationale", "") || "").slice(0, 80);
+          var label = (key || "Market") + (status ? " — " + status : "");
+          if (rationale) label += " " + rationale;
+          items.push(label);
+        });
+        var hasContent = items.some(function(x) { return (x || "").trim().length > 0; });
+        if (emptyEl) emptyEl.style.display = hasContent ? "none" : "block";
+        listEl.style.display = hasContent ? "block" : "none";
+        listEl.innerHTML = "";
+        items.forEach(function(t) {
+          if (!(t || "").trim()) return;
+          var li = document.createElement("li");
+          li.className = "insight-panel-item";
+          li.textContent = (t || "").slice(0, 200);
+          listEl.appendChild(li);
+        });
+      }
+      function renderCopilotContextPanel(payload) {
+        var emptyEl = el("copilot-context-empty");
+        var summaryEl = el("copilot-context-summary");
+        var ov = safe(payload, "overview", {});
+        var strat = safe(payload, "strategy_summary", {});
+        var ss = safe(strat, "strategy_summary", {});
+        var risk = safe(payload, "risk_summary", {});
+        var actNow = safe(ss, "act_now_count", 0);
+        var highRisk = safe(risk, "high_risk_count", 0);
+        var totalOpps = safe(ov, "total_opportunities", 0);
+        var summaryParts = [];
+        summaryParts.push("Opportunities: " + totalOpps);
+        if (actNow > 0) summaryParts.push("act now: " + actNow);
+        if (highRisk > 0) summaryParts.push("high risk: " + highRisk);
+        var focusLine = summaryParts.length ? "What Copilot is focusing on: " + summaryParts.join(" · ") : "";
+        if (summaryEl) summaryEl.textContent = focusLine;
+        var ti = safe(payload, "top_items", {});
+        var topOpps = Array.isArray(safe(ti, "top_opportunities", [])) ? ti.top_opportunities : [];
+        var topRisks = Array.isArray(safe(ti, "top_risks", [])) ? ti.top_risks : [];
+        var topMarkets = Array.isArray(safe(ti, "top_markets", [])) ? ti.top_markets : [];
+        var actions = Array.isArray(safe(payload, "top_actions", [])) ? payload.top_actions : [];
+        var signals = [];
+        if (Object.keys(ss).length) signals.push("Strategy: act now " + actNow + ", monitor " + safe(ss, "monitor_count", 0) + ", deprioritized " + safe(ss, "deprioritized_count", 0));
+        topOpps.slice(0, 3).forEach(function(o) { signals.push((o.opportunity_id || "") + " — " + (safe(o, "rationale", "") || "").slice(0, 60)); });
+        var hasAny = focusLine.length > 0 || signals.length > 0 || topOpps.length > 0 || topRisks.length > 0 || actions.length > 0 || topMarkets.length > 0;
+        if (emptyEl) emptyEl.style.display = hasAny ? "none" : "block";
+        function fillList(listId, items, max) {
+          var listEl = el(listId);
+          var wrapEl = el(listId + "-wrap");
+          if (!listEl) return;
+          var arr = (items || []).slice(0, max || 5);
+          if (wrapEl) wrapEl.style.display = arr.length ? "block" : "none";
+          listEl.innerHTML = "";
+          arr.forEach(function(t) { var li = document.createElement("li"); li.textContent = (typeof t === "string" ? t : (t && (t.rationale || t.label || t.item_key || t.market_key)) || "").slice(0, 120); listEl.appendChild(li); });
+        }
+        fillList("copilot-context-signals", signals, 5);
+        fillList("copilot-context-opportunities", topOpps.map(function(o) { return (o.opportunity_id || "") + " " + (safe(o, "rationale", "") || "").slice(0, 80); }), 3);
+        fillList("copilot-context-risks", topRisks.map(function(r) { return (safe(r, "risk_type", "") || "") + " " + (safe(r, "rationale", "") || "").slice(0, 80); }), 3);
+        fillList("copilot-context-actions", actions.map(function(a) { return typeof a === "string" ? a : (a && a.label) || ""; }), 3);
+        fillList("copilot-context-markets", topMarkets.map(function(m) { return (safe(m, "market_key", "") || "") + " " + (safe(m, "rationale", "") || "").slice(0, 60); }), 2);
+      }
+      function renderSectionIntelligence(payload) {
+        var intel = safe(payload, "intelligence_summary", {});
+        var strat = safe(payload, "strategy_summary", {});
+        var parts = [];
+        if (Object.keys(intel).length) parts.push("Total tracked: " + safe(intel, "total_tracked_opportunities", 0) + ", avg score: " + (safe(intel, "average_opportunity_score", 0) || 0).toFixed(1));
+        var ss = safe(strat, "strategy_summary", {});
+        if (Object.keys(ss).length) parts.push("Act now: " + safe(ss, "act_now_count", 0));
+        var elS = el("section-intelligence");
+        if (elS) { elS.innerHTML = parts.length ? parts.join(" · ") : "<span class=\"empty\">No intelligence data</span>"; elS.classList.toggle("empty", !parts.length); }
+      }
+      function renderSectionPortfolio(payload) {
+        var p = safe(payload, "portfolio_summary", {});
+        var total = safe(p, "total", 0);
+        var byStatus = safe(p, "by_status", {});
+        var parts = ["Total: " + total];
+        if (byStatus && typeof byStatus === "object") parts.push("Active: " + safe(byStatus, "active", 0) + ", Archived: " + safe(byStatus, "archived", 0));
+        var elS = el("section-portfolio");
+        if (elS) { elS.innerHTML = total > 0 ? parts.join(" · ") : "<span class=\"empty\">No portfolio data</span>"; elS.classList.toggle("empty", total === 0); }
+      }
+      function renderSectionRisk(payload) {
+        var r = safe(payload, "risk_summary", {});
+        var high = safe(r, "high_risk_count", 0);
+        var rs = safe(r, "risk_summary", {});
+        var parts = ["High risk: " + high];
+        if (rs && typeof rs === "object") parts.push(JSON.stringify(rs).slice(0, 120));
+        var elS = el("section-risk");
+        if (elS) { elS.innerHTML = (high > 0 || (rs && Object.keys(rs).length)) ? parts.join(" · ") : "<span class=\"empty\">No risk data</span>"; elS.classList.toggle("empty", high === 0 && (!rs || !Object.keys(rs).length)); }
+      }
+      function renderSectionMarket(payload) {
+        var m = safe(payload, "market_summary", {});
+        var mes = safe(m, "market_entry_summary", {});
+        var txt = (mes && typeof mes === "object" && Object.keys(mes).length) ? JSON.stringify(mes).slice(0, 150) : "No market data";
+        var elS = el("section-market");
+        if (elS) { elS.innerHTML = txt; elS.classList.toggle("empty", !mes || !Object.keys(mes).length); }
+      }
+      function renderSectionActivity(payload) {
+        var a = safe(payload, "activity_summary", {});
+        var total = safe(a, "total", 0);
+        var recent = safe(a, "recent_events", []);
+        var parts = ["Total events: " + total];
+        if (Array.isArray(recent) && recent.length) parts.push("Recent: " + recent.length + " items");
+        var elS = el("section-activity");
+        if (elS) { elS.innerHTML = (total > 0 || (recent && recent.length)) ? parts.join(" · ") : "<span class=\"empty\">No activity</span>"; elS.classList.toggle("empty", total === 0 && (!recent || !recent.length)); }
+      }
+      function renderTopItems(payload) {
+        var ti = safe(payload, "top_items", {});
+        var topOpps = Array.isArray(safe(ti, "top_opportunities", [])) ? ti.top_opportunities : [];
+        var topRecs = Array.isArray(safe(ti, "top_recommendations", [])) ? ti.top_recommendations : [];
+        var topRisks = Array.isArray(safe(ti, "top_risks", [])) ? ti.top_risks : [];
+        var topMarkets = Array.isArray(safe(ti, "top_markets", [])) ? ti.top_markets : [];
+        var actions = Array.isArray(safe(payload, "top_actions", [])) ? payload.top_actions : [];
+        var html = "";
+        if (topOpps.length) { html += "<p><strong>Top opportunities</strong></p><ul class=\"top-items-list\">"; topOpps.slice(0, 5).forEach(function(o) { html += "<li>" + (o.opportunity_id || "") + " " + (o.rationale || "").slice(0, 80) + "</li>"; }); html += "</ul>"; }
+        if (topRecs.length) { html += "<p><strong>Top recommendations</strong></p><ul class=\"top-items-list\">"; topRecs.slice(0, 5).forEach(function(r) { html += "<li>" + (r.item_key || "") + " " + (r.rationale || "").slice(0, 80) + "</li>"; }); html += "</ul>"; }
+        if (topRisks.length) { html += "<p><strong>Top risks</strong></p><ul class=\"top-items-list\">"; topRisks.slice(0, 5).forEach(function(r) { html += "<li>" + (r.risk_type || "") + " " + (r.rationale || "").slice(0, 80) + "</li>"; }); html += "</ul>"; }
+        if (topMarkets.length) { html += "<p><strong>Top markets</strong></p><ul class=\"top-items-list\">"; topMarkets.slice(0, 5).forEach(function(m) { html += "<li>" + (m.market_key || "") + " " + (m.rationale || "").slice(0, 80) + "</li>"; }); html += "</ul>"; }
+        if (actions.length) { html += "<p><strong>Top actions</strong></p><ul class=\"top-items-list\">"; actions.slice(0, 5).forEach(function(a) { html += "<li>" + (typeof a === "string" ? a : (a && a.label) || "") + "</li>"; }); html += "</ul>"; }
+        var elS = el("section-top-items");
+        if (elS) { elS.innerHTML = html || "<span class=\"empty\">No top items or actions</span>"; elS.classList.toggle("empty", !html); }
+      }
+      function renderNotices(payload) {
+        var notices = Array.isArray(safe(payload, "notices", [])) ? payload.notices : [];
+        var health = safe(payload, "health_indicators", {});
+        var status = safe(health, "status", "");
+        var html = "";
+        if (status) html += "<p class=\"" + (status === "ok" ? "health-ok" : "health-fallback") + "\">Health: " + status + "</p>";
+        if (Object.keys(health).length > 1) Object.keys(health).forEach(function(k) { if (k !== "status") html += "<p class=\"health-fallback\">" + k + ": " + health[k] + "</p>"; });
+        if (notices.length) { html += "<ul class=\"notices-list\">"; notices.forEach(function(n) { html += "<li>" + (typeof n === "string" ? n : (n && n.message) || JSON.stringify(n).slice(0, 100)) + "</li>"; }); html += "</ul>"; }
+        var elS = el("section-notices");
+        if (elS) { elS.innerHTML = html || "<span class=\"empty\">No notices</span>"; elS.classList.toggle("empty", !html); }
+      }
+      function render(payload) {
+        if (!payload || typeof payload !== "object") return;
+        var wid = safe(payload, "workspace_id", "");
+        var gen = safe(payload, "generated_at", "");
+        var isDemo = payload.is_demo === true;
+        if (window.__workspaceIdForAnalytics === undefined && wid) window.__workspaceIdForAnalytics = wid;
+        if (isDemo && window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent && !window.__demoModeSeenTracked) { try { window.trackEvent("demo_mode_seen"); window.__demoModeSeenTracked = true; } catch (e) {} }
+        if (el("page-title")) el("page-title").textContent = "Workspace overview" + (wid ? " · " + wid : "");
+        if (el("page-meta")) el("page-meta").textContent = gen ? "Generated " + gen.slice(0, 19) + " UTC" : "";
+        var banner = el("demo-mode-banner");
+        var demoPref = (window.getUserPreference && window.getUserPreference("demo_mode") === "false");
+        if (banner) { banner.classList.toggle("demo-visible", isDemo && !demoPref); banner.style.display = (isDemo && !demoPref) ? "block" : "none"; }
+        var copilotEl = el("copilot-context-panel");
+        var wpCopilot = (wid && window.getWorkspacePreference) ? window.getWorkspacePreference(Number(wid), "copilot_visible") : null;
+        var copilotOn = wpCopilot !== null && wpCopilot !== undefined ? !!wpCopilot : (window.isFeatureEnabled && window.isFeatureEnabled("copilot_context_enabled"));
+        if (copilotEl) copilotEl.style.display = copilotOn ? "" : "none";
+        var wpDemoHints = (wid && window.getWorkspacePreference) ? window.getWorkspacePreference(Number(wid), "demo_hints_visible") : null;
+        var showDemoHints = wpDemoHints !== null && wpDemoHints !== undefined ? !!wpDemoHints : true;
+        var hints = document.querySelectorAll ? document.querySelectorAll(".walkthrough-empty-hint") : [];
+        for (var h = 0; h < hints.length; h++) hints[h].style.display = showDemoHints ? "" : "none";
+        renderOverviewStats(payload);
+        renderOpportunityFeed(payload);
+        renderStrategyInsightsPanel(payload);
+        renderRiskInsightsPanel(payload);
+        renderMarketInsightsPanel(payload);
+        renderCopilotContextPanel(payload);
+        renderSectionIntelligence(payload);
+        renderSectionPortfolio(payload);
+        renderSectionRisk(payload);
+        renderSectionMarket(payload);
+        renderSectionActivity(payload);
+        renderTopItems(payload);
+        renderNotices(payload);
+      }
+      function load() {
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (!ws) { showError("Workspace ID is required."); return; }
+        showLoading();
+        var url = "/api/workspaces/" + encodeURIComponent(ws) + "/dashboard";
+        fetch(url, { headers: headers() })
+          .then(function(r) {
+            if (!r.ok) throw new Error(r.status + " " + r.statusText);
+            return r.json();
+          })
+          .then(function(body) {
+            var data = (body && body.data) ? body.data : body;
+            if (body && body.error && !data) { showError(body.error); return; }
+            showContent();
+            render(data || {});
+            var wsId = (data && data.workspace_id) != null ? Number(data.workspace_id) : null;
+            if (wsId != null && window.getWorkspacePreference) {
+              var d = window.getWorkspacePreference(wsId, "dashboard_density");
+              if (d === "compact" || d === "comfortable") {
+                document.body.classList.toggle("dashboard-density-compact", d === "compact");
+              } else if (window.getUserPreference) {
+                var g = window.getUserPreference("dashboard_density");
+                document.body.classList.toggle("dashboard-density-compact", g === "compact");
+              }
+              var land = window.getWorkspacePreference(wsId, "landing_section");
+              if (land && document.getElementById) {
+                var target = document.getElementById(land === "overview" ? "overview-stats" : land === "opportunities" ? "opportunity-feed-panel" : land === "insights" ? "insight-panels-grid" : land === "copilot" ? "copilot-context-panel" : "");
+                if (target) target.scrollIntoView && target.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }
+          })
+          .catch(function(e) {
+            showError(e && e.message ? e.message : "Request failed.");
+          });
+      }
+      if (el("btn-load")) el("btn-load").addEventListener("click", load);
+
+      /* Step 223: Read workspace_id from query and prefill + load (e.g. redirect from create workspace) */
+      (function applyQueryWorkspaceId() {
+        try {
+          var params = new URLSearchParams(window.location.search || "");
+          var wid = params.get("workspace_id");
+          if (wid && el("workspace-id")) {
+            el("workspace-id").value = wid;
+            load();
+          }
+        } catch (e) {}
+      })();
+
+      /* Step 220: Workspace walkthrough */
+      var WALKTHROUGH_STORAGE_KEY = "workspace_walkthrough_completed";
+      var WALKTHROUGH_STEPS = [
+        { step_id: "welcome", title: "Welcome to your workspace dashboard", description: "This dashboard shows your opportunities, strategy insights, risks, and recommended actions.", target_element: "dashboard-content", optional_action_hint: "" },
+        { step_id: "opportunities", title: "Here are your top opportunities", description: "The opportunity feed lists discovered product opportunities ranked by strategic score and priority.", target_element: "opportunity-feed-panel", optional_action_hint: "Load the dashboard to see opportunities." },
+        { step_id: "insights", title: "Strategy, risk, and market insights", description: "These panels explain strategy signals, risk indicators, and market-entry recommendations.", target_element: "insight-panels-grid", optional_action_hint: "" },
+        { step_id: "copilot", title: "Copilot context", description: "This section shows what the system sees: top signals, opportunities, risks, and recommended actions for context-aware guidance.", target_element: "copilot-context-panel", optional_action_hint: "" },
+        { step_id: "portfolio", title: "Manage tracked items in your portfolio", description: "Use the Portfolio page to view and manage tracked opportunities, ASINs, and categories.", target_element: "", optional_action_hint: "Go to Portfolio in the navigation to manage items." },
+        { step_id: "alerts", title: "Alerts notify you when signals change", description: "The Alert center shows important notifications when high-potential opportunities or risks are detected.", target_element: "", optional_action_hint: "Go to Alerts in the navigation to view alerts." },
+        { step_id: "done", title: "You're all set", description: "Use the navigation to switch between Dashboard, Portfolio, and Alerts. Load the dashboard with your workspace ID to see your data.", target_element: "", optional_action_hint: "" }
+      ];
+      function getWalkthroughCompleted() { try { return localStorage.getItem(WALKTHROUGH_STORAGE_KEY) === "true"; } catch (e) { return false; } }
+      function setWalkthroughCompleted() { try { localStorage.setItem(WALKTHROUGH_STORAGE_KEY, "true"); } catch (e) {} }
+      function getWalkthroughOverlay() { return document.getElementById("walkthrough-overlay"); }
+      function getWalkthroughCard() { return document.getElementById("walkthrough-step-card"); }
+      var walkthroughCurrentIndex = 0;
+      function walkthroughClearHighlight() {
+        WALKTHROUGH_STEPS.forEach(function(s) {
+          var id = s.target_element;
+          if (id) { var elm = document.getElementById(id); if (elm) elm.classList.remove("walkthrough-highlight"); }
+        });
+      }
+      function walkthroughShowStep(index) {
+        if (index < 0 || index >= WALKTHROUGH_STEPS.length) return;
+        walkthroughCurrentIndex = index;
+        walkthroughClearHighlight();
+        var step = WALKTHROUGH_STEPS[index];
+        var titleEl = document.getElementById("walkthrough-step-title");
+        var descEl = document.getElementById("walkthrough-step-desc");
+        var actionEl = document.getElementById("walkthrough-step-action");
+        var prevBtn = document.getElementById("walkthrough-prev");
+        var nextBtn = document.getElementById("walkthrough-next");
+        if (titleEl) titleEl.textContent = step.title || "";
+        if (descEl) descEl.textContent = step.description || "";
+        if (actionEl) {
+          actionEl.textContent = step.optional_action_hint || "";
+          actionEl.style.display = step.optional_action_hint ? "block" : "none";
+        }
+        if (prevBtn) prevBtn.style.display = index === 0 ? "none" : "inline-block";
+        if (nextBtn) nextBtn.textContent = index === WALKTHROUGH_STEPS.length - 1 ? "Done" : "Next";
+        if (step.target_element) {
+          var target = document.getElementById(step.target_element);
+          if (target) { target.classList.add("walkthrough-highlight"); target.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        }
+      }
+      function walkthroughStart() {
+        if (window.isSettingEnabled && !window.isSettingEnabled("walkthrough_enabled")) return;
+        if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("walkthrough_started"); } catch (e) {}
+        var ov = getWalkthroughOverlay();
+        if (!ov) return;
+        ov.classList.add("walkthrough-visible");
+        ov.setAttribute("aria-hidden", "false");
+        walkthroughShowStep(0);
+      }
+      function walkthroughHide() {
+        var ov = getWalkthroughOverlay();
+        if (ov) { ov.classList.remove("walkthrough-visible"); ov.setAttribute("aria-hidden", "true"); }
+        walkthroughClearHighlight();
+      }
+      function walkthroughNext() {
+        if (walkthroughCurrentIndex >= WALKTHROUGH_STEPS.length - 1) { setWalkthroughCompleted(); walkthroughHide(); return; }
+        walkthroughShowStep(walkthroughCurrentIndex + 1);
+      }
+      function walkthroughPrev() { if (walkthroughCurrentIndex > 0) walkthroughShowStep(walkthroughCurrentIndex - 1); }
+      function walkthroughSkip() { setWalkthroughCompleted(); walkthroughHide(); }
+      function walkthroughComplete() { if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("walkthrough_completed"); } catch (e) {} setWalkthroughCompleted(); walkthroughHide(); }
+      (function bindWalkthrough() {
+        var trigger = document.getElementById("walkthrough-trigger");
+        var skipBtn = document.getElementById("walkthrough-skip");
+        var prevBtn = document.getElementById("walkthrough-prev");
+        var nextBtn = document.getElementById("walkthrough-next");
+        if (trigger) {
+          if (window.isSettingEnabled && !window.isSettingEnabled("walkthrough_enabled")) trigger.style.display = "none";
+          else trigger.addEventListener("click", function(e) { e.preventDefault(); walkthroughStart(); });
+        }
+        if (skipBtn) skipBtn.addEventListener("click", walkthroughSkip);
+        if (prevBtn) prevBtn.addEventListener("click", walkthroughPrev);
+        if (nextBtn) nextBtn.addEventListener("click", function() {
+          if (walkthroughCurrentIndex >= WALKTHROUGH_STEPS.length - 1) walkthroughComplete();
+          else walkthroughNext();
+        });
+        if (window.isSettingEnabled && window.isSettingEnabled("walkthrough_enabled") && !getWalkthroughCompleted()) setTimeout(function() { walkthroughStart(); }, 1200);
+      })();
+
+      /* Step 222: Guided onboarding flow */
+      var ONBOARDING_STORAGE_KEY = "workspace_onboarding_completed";
+      var ONBOARDING_STEPS = [
+        { step_id: "explore-dashboard", title: "Explore the workspace dashboard", target: "#overview-stats" },
+        { step_id: "review-opportunities", title: "Review discovered opportunities", target: "#opportunity-feed-panel" },
+        { step_id: "track-portfolio", title: "Track an opportunity in your portfolio", target: "/portfolio" },
+        { step_id: "review-strategy-risk", title: "Review strategy and risk insights", target: "#insight-panels-grid" },
+        { step_id: "configure-alerts", title: "Configure alerts and signals", target: "/alert-center" },
+        { step_id: "explore-copilot", title: "Explore Copilot context insights", target: "#copilot-context-panel" }
+      ];
+      function getOnboardingCompleted() { try { return localStorage.getItem(ONBOARDING_STORAGE_KEY) === "true"; } catch (e) { return false; } }
+      function setOnboardingCompleted() { try { localStorage.setItem(ONBOARDING_STORAGE_KEY, "true"); } catch (e) {} }
+      function clearOnboardingCompleted() { try { localStorage.removeItem(ONBOARDING_STORAGE_KEY); } catch (e) {} }
+      function renderOnboardingChecklist() {
+        var listEl = document.getElementById("onboarding-checklist");
+        if (!listEl) return;
+        listEl.innerHTML = "";
+        ONBOARDING_STEPS.forEach(function(s, i) {
+          var li = document.createElement("li");
+          var a = document.createElement("a");
+          a.href = s.target || "#";
+          a.textContent = (i + 1) + ". " + (s.title || "");
+          if ((s.target || "").indexOf("/") === 0) a.setAttribute("target", "_self");
+          li.appendChild(a);
+          listEl.appendChild(li);
+        });
+      }
+      function showOnboardingPanel() {
+        if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("onboarding_viewed"); } catch (e) {}
+        var pan = document.getElementById("onboarding-panel");
+        if (pan) { pan.classList.add("onboarding-visible"); pan.style.display = "block"; }
+        var prog = document.getElementById("onboarding-progress");
+        if (prog) prog.textContent = "Step 1 of " + (ONBOARDING_STEPS.length || 6);
+        var reopen = document.getElementById("onboarding-reopen");
+        if (reopen) reopen.style.display = "none";
+      }
+      function hideOnboardingPanel() {
+        var pan = document.getElementById("onboarding-panel");
+        if (pan) { pan.classList.remove("onboarding-visible"); pan.style.display = "none"; }
+        var reopen = document.getElementById("onboarding-reopen");
+        if (reopen) reopen.style.display = "inline";
+      }
+      function dismissOnboarding() { if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("onboarding_completed"); } catch (e) {} setOnboardingCompleted(); hideOnboardingPanel(); }
+      function reopenOnboarding() { clearOnboardingCompleted(); renderOnboardingChecklist(); showOnboardingPanel(); }
+      (function initOnboarding() {
+        renderOnboardingChecklist();
+        if (window.isSettingEnabled && !window.isSettingEnabled("onboarding_enabled")) { hideOnboardingPanel(); var r = document.getElementById("onboarding-reopen"); if (r) r.style.display = "none"; return; }
+        if (!getOnboardingCompleted()) showOnboardingPanel();
+        else hideOnboardingPanel();
+        var dismissBtn = document.getElementById("onboarding-dismiss");
+        var reopenLink = document.getElementById("onboarding-reopen");
+        if (dismissBtn) dismissBtn.addEventListener("click", dismissOnboarding);
+        if (reopenLink) { reopenLink.addEventListener("click", function(e) { e.preventDefault(); reopenOnboarding(); }); }
+      })();
+      (function initExport() {
+        var btn = el("export-btn");
+        var menu = el("export-menu");
+        if (!btn || !menu) return;
+        btn.addEventListener("click", function(e) {
+          e.preventDefault();
+          var open = menu.style.display === "block";
+          menu.style.display = open ? "none" : "block";
+          btn.setAttribute("aria-expanded", open ? "false" : "true");
+        });
+        document.addEventListener("click", function(e) {
+          if (menu && menu.style.display === "block" && !menu.contains(e.target) && e.target !== btn) {
+            menu.style.display = "none";
+            if (btn) btn.setAttribute("aria-expanded", "false");
+          }
+        });
+        var items = menu.querySelectorAll("[data-export]");
+        for (var i = 0; i < items.length; i++) {
+          items[i].addEventListener("click", function(e) {
+            e.preventDefault();
+            var type = this.getAttribute("data-export");
+            var format = this.getAttribute("data-format") || "json";
+            var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+            if (!ws) { showError("Workspace ID is required for export."); menu.style.display = "none"; return; }
+            menu.style.display = "none";
+            btn.setAttribute("aria-expanded", "false");
+            var url = "/api/workspaces/" + encodeURIComponent(ws) + "/export/" + encodeURIComponent(type) + "?format=" + encodeURIComponent(format);
+            var opts = { method: "GET", headers: headers() };
+            fetch(url, opts).then(function(r) {
+              if (!r.ok) throw new Error(r.status + " " + r.statusText);
+              return r.text();
+            }).then(function(text) {
+              var ext = format === "csv" ? "csv" : "json";
+              var filename = "workspace-" + ws + "-" + type + "." + ext;
+              var blob = new Blob([text], { type: format === "csv" ? "text/csv" : "application/json" });
+              var a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }).catch(function(err) {
+              showError("Export failed: " + (err && err.message ? err.message : "unknown error"));
+            });
+          });
+        }
+      })();
+      if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackPageView) try { window.trackPageView("workspace_dashboard_viewed"); } catch (e) {}
+      (function applyDensity() {
+        try {
+          var inp = el("workspace-id");
+          var wsId = inp && inp.value ? parseInt(inp.value, 10) : null;
+          if (wsId != null && !isNaN(wsId) && window.getWorkspacePreference) {
+            var d = window.getWorkspacePreference(wsId, "dashboard_density");
+            if (d === "compact" || d === "comfortable") document.body.classList.toggle("dashboard-density-compact", d === "compact");
+            else { var g = window.getUserPreference && window.getUserPreference("dashboard_density"); document.body.classList.toggle("dashboard-density-compact", g === "compact"); }
+          } else {
+            var g = window.getUserPreference && window.getUserPreference("dashboard_density");
+            document.body.classList.toggle("dashboard-density-compact", g === "compact");
+          }
+        } catch (e) {}
+      })();
+    })();
+  </script>
+</body>
+</html>

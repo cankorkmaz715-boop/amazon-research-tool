@@ -1,0 +1,20 @@
+---
+description: Step-by-step workflow for Amazon research tool (Steps 20–30); no confirmation phrase required
+alwaysApply: true
+---
+
+# Step workflow (Amazon research tool)
+
+When implementing roadmap steps (Step 20 through Step 30) for this project:
+
+1. **Implement the step** – Apply the planned code/config changes for the current step only. Keep the same architecture and step order.
+
+2. **Provide the host-side test command** – Give the exact copy-paste command to run the step’s smoke test (e.g. `python scripts/stepNN_..._smoke.py`).
+
+3. **Wait for the user to run the command** – Do not implement the next step until the user has run the test.
+
+4. **Proceed on success** – If the user **confirms success** or **shows successful output** (e.g. "it works", "passed", log output showing success), **immediately proceed to the next step**. Do **not** require the phrase "Step X passed". Any clear success indication is enough.
+
+Do **not** wait for an explicit "Step X passed" message. Continue to the next step as soon as the user indicates the current step succeeded.
+
+Keep the same architecture and step order: Step 20 → Step 21 → … → Step 30.

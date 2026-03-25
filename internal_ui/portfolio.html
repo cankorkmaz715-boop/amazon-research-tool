@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portfolio – Workspace</title>
+  <link rel="stylesheet" href="/internal_ui/workspace-shared.css">
+  <script src="/internal_ui/workspace-feature-flags.js"></script>
+  <script src="/internal_ui/workspace-analytics.js"></script>
+  <style>
+    :root { --card-bg: var(--ws-card-bg); --border: var(--ws-border); --text: var(--ws-text); --muted: var(--ws-muted); --primary: var(--ws-primary); --radius-md: var(--ws-radius-md); --section-gap: var(--ws-section-gap); --space-md: var(--ws-space-md); }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; color: var(--text); }
+    .page-header { margin-bottom: var(--space-md); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .page-header h1 { margin: 0 0 var(--ws-space-xs) 0; font-size: var(--ws-heading-size); }
+    .page-header .meta { color: var(--muted); font-size: 0.875rem; }
+    .controls { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .controls label { display: flex; align-items: center; gap: 0.25rem; }
+    .controls input[type="number"] { width: 5rem; }
+    .summary-bar { display: flex; flex-wrap: wrap; gap: var(--space-md); margin-bottom: var(--space-md); padding: var(--ws-card-padding); background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: var(--ws-meta-size); box-shadow: var(--ws-shadow-card); }
+    .summary-bar .total { font-weight: 600; }
+    .filters { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    .filters select { padding: 0.25rem 0.5rem; }
+    .portfolio-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .portfolio-table th, .portfolio-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .portfolio-table th { background: var(--card-bg); font-weight: 600; }
+    .badge, .ws-badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: var(--ws-radius-sm); font-size: 0.7rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-archived { background: #e2e3e5; color: #383d41; }
+    .btn-archive, .ws-btn-secondary { padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: var(--ws-radius-sm); cursor: pointer; }
+    .btn-archive { color: #856404; background: #fff3cd; border: 1px solid #ffc107; }
+    .btn-archive:hover { background: #ffe69c; }
+    .btn-archive:disabled { opacity: 0.6; cursor: not-allowed; }
+    .loading, .dashboard-loading-state { color: var(--muted); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .error, .dashboard-error-state { color: var(--ws-error); padding: var(--ws-card-padding); font-size: var(--ws-meta-size); }
+    .empty-state, .dashboard-empty-state { color: var(--muted); font-style: italic; padding: var(--ws-card-padding); text-align: center; font-size: var(--ws-meta-size); }
+    nav { margin-bottom: 1rem; }
+    nav a { margin-right: 1rem; color: var(--primary); text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .workspace-header { border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem; }
+    .workspace-nav { margin: 0; }
+    .workspace-nav a.active { font-weight: 700; color: var(--text); pointer-events: none; }
+    .workspace-main { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+  </style>
+</head>
+<body class="workspace-app">
+  <header class="workspace-header">
+    <nav class="workspace-nav" id="workspace-nav" aria-label="Workspace">
+      <a href="/workflow">Workflow</a><a href="/workspace-overview">Dashboard</a><a href="/portfolio" class="active">Portfolio</a><a href="/alert-center">Alerts</a><a href="/create-workspace">Create workspace</a><a href="/settings">Settings</a><a href="/workspace-preferences">Workspace preferences</a>
+    </nav>
+  </header>
+  <main class="workspace-main">
+  <div class="page-header">
+    <h1 id="page-title">Portfolio</h1>
+    <p class="meta" id="page-meta">Set workspace ID and API key, then load.</p>
+  </div>
+  <div class="controls">
+    <label>API key: <input type="password" id="api-key" placeholder="optional" /></label>
+    <label>Workspace ID: <input type="number" id="workspace-id" placeholder="e.g. 1" /></label>
+    <button type="button" id="btn-load">Load portfolio</button>
+    <span class="export-wrap" id="export-wrap" style="display:inline-block;margin-left:0.5rem;position:relative;">
+      <button type="button" id="export-btn" class="export-btn" aria-haspopup="true" aria-expanded="false" style="font-size:0.85rem;padding:0.25rem 0.5rem;cursor:pointer;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--text);">Export</button>
+      <div id="export-menu" class="export-menu" role="menu" aria-label="Export options" style="display:none;position:absolute;min-width:10rem;background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:10;padding:0.25rem 0;margin-top:0.25rem;">
+        <a href="#" role="menuitem" data-export="dashboard" data-format="json" style="display:block;padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text);text-decoration:none;">Dashboard (JSON)</a>
+        <a href="#" role="menuitem" data-export="opportunities" data-format="csv" style="display:block;padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text);text-decoration:none;">Opportunities (CSV)</a>
+        <a href="#" role="menuitem" data-export="portfolio" data-format="csv" style="display:block;padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text);text-decoration:none;">Portfolio (CSV)</a>
+        <a href="#" role="menuitem" data-export="alerts" data-format="csv" style="display:block;padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text);text-decoration:none;">Alerts (CSV)</a>
+      </div>
+    </span>
+  </div>
+
+  <div id="portfolio-root">
+    <div id="portfolio-loading" class="loading dashboard-loading-state" style="display:none;">Loading portfolio…</div>
+    <div id="portfolio-error" class="error dashboard-error-state" style="display:none;"></div>
+    <div id="portfolio-content" style="display:none;">
+      <div class="summary-bar" id="portfolio-summary-bar"></div>
+      <div class="filters" id="portfolio-filters">
+        <label>Status: <select id="filter-status"><option value="">All</option><option value="active">Active</option><option value="archived">Archived</option></select></label>
+        <label>Type: <select id="filter-type"><option value="">All</option><option value="opportunity">Opportunity</option><option value="asin">ASIN</option><option value="niche">Niche</option><option value="category">Category</option><option value="market">Market</option><option value="keyword">Keyword</option></select></label>
+        <button type="button" id="btn-apply-filters">Apply</button>
+      </div>
+      <div id="portfolio-list-wrap">
+        <table class="portfolio-table" id="portfolio-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Key</th>
+              <th>Label</th>
+              <th>Source</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-tbody"></tbody>
+        </table>
+        <div id="portfolio-empty" class="empty-state dashboard-empty-state" style="display:none;">No portfolio items. Load with filters or add items via API.</div>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <script>
+    (function() {
+      window.__analyticsApiKey = function() { var e = document.getElementById("api-key"); return e ? e.value.trim() : ""; };
+      function el(id) { return document.getElementById(id); }
+      function safe(obj, key, def) { return (obj && obj[key] !== undefined && obj[key] !== null) ? obj[key] : def; }
+      function headers() {
+        var h = {};
+        var key = (el("api-key") && el("api-key").value) ? el("api-key").value.trim() : "";
+        if (key) h["X-API-Key"] = key;
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (ws) h["X-Workspace-Id"] = ws;
+        return h;
+      }
+      function showLoading() {
+        if (el("portfolio-loading")) el("portfolio-loading").style.display = "block";
+        if (el("portfolio-error")) el("portfolio-error").style.display = "none";
+        if (el("portfolio-content")) el("portfolio-content").style.display = "none";
+      }
+      function showError(msg) {
+        if (el("portfolio-loading")) el("portfolio-loading").style.display = "none";
+        if (el("portfolio-content")) el("portfolio-content").style.display = "none";
+        if (el("portfolio-error")) { el("portfolio-error").textContent = msg || "Failed to load portfolio."; el("portfolio-error").style.display = "block"; }
+      }
+      function showContent() {
+        if (el("portfolio-loading")) el("portfolio-loading").style.display = "none";
+        if (el("portfolio-error")) el("portfolio-error").style.display = "none";
+        if (el("portfolio-content")) el("portfolio-content").style.display = "block";
+      }
+      function renderSummary(data) {
+        var bar = el("portfolio-summary-bar");
+        if (!bar) return;
+        var total = safe(data, "total", 0);
+        var byStatus = safe(data, "by_status", {});
+        var byType = safe(data, "by_type", {});
+        var html = "<span class=\"total\">Total: " + total + "</span>";
+        html += " <span>Active: " + (safe(byStatus, "active", 0)) + "</span>";
+        html += " <span>Archived: " + (safe(byStatus, "archived", 0)) + "</span>";
+        if (byType && typeof byType === "object" && Object.keys(byType).length) {
+          Object.keys(byType).forEach(function(t) { html += " <span>" + t + ": " + byType[t] + "</span>"; });
+        }
+        bar.innerHTML = html;
+      }
+      function formatDate(v) {
+        if (!v) return "—";
+        if (typeof v !== "string") return v;
+        return v.slice(0, 19).replace("T", " ");
+      }
+      function renderList(items) {
+        var tbody = el("portfolio-tbody");
+        var emptyEl = el("portfolio-empty");
+        if (!tbody) return;
+        var list = Array.isArray(items) ? items : [];
+        if (emptyEl) emptyEl.style.display = list.length ? "none" : "block";
+        if (el("portfolio-table")) el("portfolio-table").style.display = list.length ? "table" : "none";
+        tbody.innerHTML = "";
+        list.forEach(function(it) {
+          var id = safe(it, "id", "—");
+          var itemType = safe(it, "item_type", "—");
+          var itemKey = safe(it, "item_key", "—");
+          var itemLabel = safe(it, "item_label", "");
+          var sourceType = safe(it, "source_type", "");
+          var status = (safe(it, "status", "") || "active").toLowerCase();
+          var updated = formatDate(it.updated_at || it.created_at);
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + (id !== "—" ? id : "") + "</td>" +
+            "<td>" + (itemType || "—") + "</td>" +
+            "<td>" + (itemKey || "—") + "</td>" +
+            "<td>" + (itemLabel || "—") + "</td>" +
+            "<td>" + (sourceType || "—") + "</td>" +
+            "<td><span class=\"badge badge-" + (status === "archived" ? "archived" : "active") + "\">" + (status || "active") + "</span></td>" +
+            "<td>" + updated + "</td>" +
+            "<td>" + (status === "active" ? "<button type=\"button\" class=\"btn-archive\" data-item-id=\"" + id + "\">Archive</button>" : "—") + "</td>";
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll(".btn-archive").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var itemId = btn.getAttribute("data-item-id");
+            if (!itemId) return;
+            archiveItem(itemId, btn);
+          });
+        });
+      }
+      function archiveItem(itemId, btnEl) {
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (!ws) { showError("Workspace ID required."); return; }
+        if (btnEl) { btnEl.disabled = true; btnEl.textContent = "Archiving…"; }
+        var url = "/api/workspaces/" + encodeURIComponent(ws) + "/portfolio/" + encodeURIComponent(itemId) + "/archive";
+        fetch(url, { method: "PATCH", headers: headers() })
+          .then(function(r) { return r.json(); })
+          .then(function(body) {
+            var data = safe(body, "data", {});
+            if (data && data.archived) {
+              if (window.isFeatureEnabled && window.isFeatureEnabled("usage_analytics_enabled") && window.trackEvent) try { window.trackEvent("portfolio_item_archived"); } catch (e) {}
+              loadPortfolio();
+            } else {
+              showError(body.error || "Archive failed.");
+              if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Archive"; }
+            }
+          })
+          .catch(function(e) {
+            showError(e && e.message ? e.message : "Archive request failed.");
+            if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Archive"; }
+          });
+      }
+      function loadPortfolio() {
+        var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+        if (!ws) { showError("Workspace ID is required."); return; }
+        showLoading();
+        var statusFilter = (el("filter-status") && el("filter-status").value) ? el("filter-status").value.trim() : "";
+        var typeFilter = (el("filter-type") && el("filter-type").value) ? el("filter-type").value.trim() : "";
+        var summaryUrl = "/api/workspaces/" + encodeURIComponent(ws) + "/portfolio/summary";
+        var listUrl = "/api/workspaces/" + encodeURIComponent(ws) + "/portfolio?limit=500";
+        if (statusFilter) listUrl += "&status=" + encodeURIComponent(statusFilter);
+        if (typeFilter) listUrl += "&item_type=" + encodeURIComponent(typeFilter);
+        Promise.all([
+          fetch(summaryUrl, { headers: headers() }).then(function(r) { return r.json(); }),
+          fetch(listUrl, { headers: headers() }).then(function(r) { return r.json(); })
+        ]).then(function(results) {
+          var summaryBody = results[0];
+          var listBody = results[1];
+          var summaryData = (summaryBody && summaryBody.data) ? summaryBody.data : summaryBody;
+          var listData = (listBody && listBody.data) != null ? listBody.data : (listBody && listBody.error ? null : []);
+          if (listBody && listBody.error && !Array.isArray(listData)) {
+            showError(listBody.error);
+            return;
+          }
+          showContent();
+          renderSummary(summaryData || {});
+          renderList(Array.isArray(listData) ? listData : []);
+          if (el("page-meta")) el("page-meta").textContent = "Workspace " + ws + " · " + (Array.isArray(listData) ? listData.length : 0) + " items";
+        }).catch(function(e) {
+          showError(e && e.message ? e.message : "Request failed.");
+        });
+      }
+      if (el("btn-load")) el("btn-load").addEventListener("click", loadPortfolio);
+      if (el("btn-apply-filters")) el("btn-apply-filters").addEventListener("click", loadPortfolio);
+      (function initExport() {
+        var btn = el("export-btn");
+        var menu = el("export-menu");
+        if (!btn || !menu) return;
+        btn.addEventListener("click", function(e) {
+          e.preventDefault();
+          var open = menu.style.display === "block";
+          menu.style.display = open ? "none" : "block";
+          btn.setAttribute("aria-expanded", open ? "false" : "true");
+        });
+        document.addEventListener("click", function(e) {
+          if (menu && menu.style.display === "block" && !menu.contains(e.target) && e.target !== btn) {
+            menu.style.display = "none";
+            if (btn) btn.setAttribute("aria-expanded", "false");
+          }
+        });
+        menu.querySelectorAll("[data-export]").forEach(function(link) {
+          link.addEventListener("click", function(e) {
+            e.preventDefault();
+            var type = this.getAttribute("data-export");
+            var format = this.getAttribute("data-format") || "json";
+            var ws = (el("workspace-id") && el("workspace-id").value) ? el("workspace-id").value.trim() : "";
+            if (!ws) { showError("Workspace ID is required for export."); menu.style.display = "none"; return; }
+            menu.style.display = "none";
+            btn.setAttribute("aria-expanded", "false");
+            var url = "/api/workspaces/" + encodeURIComponent(ws) + "/export/" + encodeURIComponent(type) + "?format=" + encodeURIComponent(format);
+            fetch(url, { method: "GET", headers: headers() }).then(function(r) {
+              if (!r.ok) throw new Error(r.status + " " + r.statusText);
+              return r.text();
+            }).then(function(text) {
+              var ext = format === "csv" ? "csv" : "json";
+              var filename = "workspace-" + ws + "-" + type + "." + ext;
+              var blob = new Blob([text], { type: format === "csv" ? "text/csv" : "application/json" });
+              var a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }).catch(function(err) {
+              showError("Export failed: " + (err && err.message ? err.message : "unknown error"));
+            });
+          });
+        });
+      })();
+      if (window.trackPageView) try { window.trackPageView("portfolio_page_viewed"); } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Amazon Research Tool – Python deps
+# Python 3.10+
+
+# Playwright (browser automation)
+playwright>=1.40.0
+
+# PostgreSQL
+psycopg2-binary>=2.9.9
+
+# Env and config
+python-dotenv>=1.0.0
+
+# Step 231: FastAPI gateway
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+httpx>=0.25.0
+
+# Optional: structured JSON logs
+# python-json-logger>=2.0.0
