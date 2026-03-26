@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from amazon_research.logging_config import get_logger
-from amazon_research.api_gateway.routers import health, workspaces, discovery
+from amazon_research.api_gateway.routers import health, workspaces, discovery, copilot
 
 logger = get_logger("api_gateway")
 
@@ -72,3 +72,4 @@ def global_exception_handler(request, exc):
 app.include_router(health.router, tags=["health"])
 app.include_router(workspaces.router, prefix="/api/workspaces", tags=["workspaces"])
 app.include_router(discovery.router, prefix="/api/workspaces/{workspace_id}/discovery", tags=["discovery"])
+app.include_router(copilot.router, prefix="/api/copilot", tags=["copilot"])
