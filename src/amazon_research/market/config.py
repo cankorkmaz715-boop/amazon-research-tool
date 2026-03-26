@@ -12,13 +12,51 @@ SUPPORTED_MARKETS: List[str] = ["DE", "UK", "US", "AU", "FR", "IT", "ES"]
 PRODUCTION_MARKETS: List[str] = ["DE", "US", "AU"]
 
 _MARKET_CONFIG: Dict[str, Dict[str, Any]] = {
-    "DE": {"domain": "www.amazon.de", "product_path": "/dp/", "listing_path": "/s", "locale": "de_DE"},
-    "UK": {"domain": "www.amazon.co.uk", "product_path": "/dp/", "listing_path": "/s", "locale": "en_GB"},
-    "US": {"domain": "www.amazon.com", "product_path": "/dp/", "listing_path": "/s", "locale": "en_US"},
-    "AU": {"domain": "www.amazon.com.au", "product_path": "/dp/", "listing_path": "/s", "locale": "en_AU"},
-    "FR": {"domain": "www.amazon.fr", "product_path": "/dp/", "listing_path": "/s", "locale": "fr_FR"},
-    "IT": {"domain": "www.amazon.it", "product_path": "/dp/", "listing_path": "/s", "locale": "it_IT"},
-    "ES": {"domain": "www.amazon.es", "product_path": "/dp/", "listing_path": "/s", "locale": "es_ES"},
+    "DE": {
+        "domain": "www.amazon.de", "product_path": "/dp/", "listing_path": "/s", "locale": "de_DE",
+        "currency": "EUR", "currency_symbol": "€",
+        # DE uses comma as decimal separator: 23,36€  / thousands: 1.234
+        "price_format": "DE",
+        # DE rating: "4,8 von 5 Sternen" / review: "(2.662)"
+        "rating_format": "DE",
+    },
+    "UK": {
+        "domain": "www.amazon.co.uk", "product_path": "/dp/", "listing_path": "/s", "locale": "en_GB",
+        "currency": "GBP", "currency_symbol": "£",
+        "price_format": "EN",
+        "rating_format": "EN",
+    },
+    "US": {
+        "domain": "www.amazon.com", "product_path": "/dp/", "listing_path": "/s", "locale": "en_US",
+        "currency": "USD", "currency_symbol": "$",
+        "price_format": "EN",
+        "rating_format": "EN",
+    },
+    "AU": {
+        "domain": "www.amazon.com.au", "product_path": "/dp/", "listing_path": "/s", "locale": "en_AU",
+        "currency": "AUD", "currency_symbol": "A$",
+        # AU uses EN format but with A$ prefix
+        "price_format": "EN",
+        "rating_format": "EN",
+    },
+    "FR": {
+        "domain": "www.amazon.fr", "product_path": "/dp/", "listing_path": "/s", "locale": "fr_FR",
+        "currency": "EUR", "currency_symbol": "€",
+        "price_format": "DE",
+        "rating_format": "DE",
+    },
+    "IT": {
+        "domain": "www.amazon.it", "product_path": "/dp/", "listing_path": "/s", "locale": "it_IT",
+        "currency": "EUR", "currency_symbol": "€",
+        "price_format": "DE",
+        "rating_format": "DE",
+    },
+    "ES": {
+        "domain": "www.amazon.es", "product_path": "/dp/", "listing_path": "/s", "locale": "es_ES",
+        "currency": "EUR", "currency_symbol": "€",
+        "price_format": "DE",
+        "rating_format": "DE",
+    },
 }
 
 
