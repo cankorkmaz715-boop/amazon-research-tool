@@ -45,7 +45,7 @@ def copilot_status() -> Dict[str, Any]:
         "ready": has_key and has_package,
         "api_key_configured": has_key,
         "anthropic_installed": has_package,
-        "model": "claude-opus-4-6",
+        "model": "claude-sonnet-4-6",
     }
 
 

@@ -175,7 +175,7 @@ async def analyze_multi_market(
     try:
         if stream:
             with client.messages.stream(
-                model="claude-opus-4-6",
+                model="claude-sonnet-4-6",
                 max_tokens=2048,
                 thinking={"type": "adaptive"},
                 system=_SYSTEM_PROMPT,
@@ -185,7 +185,7 @@ async def analyze_multi_market(
                     yield text
         else:
             response = client.messages.create(
-                model="claude-opus-4-6",
+                model="claude-sonnet-4-6",
                 max_tokens=2048,
                 thinking={"type": "adaptive"},
                 system=_SYSTEM_PROMPT,
@@ -201,6 +201,13 @@ async def analyze_multi_market(
     except anthropic.RateLimitError:
         yield "Error: Claude API rate limit hit. Please retry shortly."
         logger.warning("llm_copilot: rate limit")
+    except anthropic.BadRequestError as e:
+        msg = str(e)
+        if "credit balance" in msg.lower():
+            yield "Error: Anthropic hesabında kredi yetersiz. https://console.anthropic.com → Plans & Billing → kredi ekle."
+        else:
+            yield f"Error: {msg}"
+        logger.error("llm_copilot: bad request: %s", e)
     except Exception as e:
         yield f"Error during LLM analysis: {e}"
         logger.error("llm_copilot: unexpected error: %s", e)
@@ -243,7 +250,7 @@ async def ask_copilot(
     try:
         if stream:
             with client.messages.stream(
-                model="claude-opus-4-6",
+                model="claude-sonnet-4-6",
                 max_tokens=1024,
                 thinking={"type": "adaptive"},
                 system=_SYSTEM_PROMPT,
@@ -253,7 +260,7 @@ async def ask_copilot(
                     yield text
         else:
             response = client.messages.create(
-                model="claude-opus-4-6",
+                model="claude-sonnet-4-6",
                 max_tokens=1024,
                 thinking={"type": "adaptive"},
                 system=_SYSTEM_PROMPT,
@@ -267,6 +274,12 @@ async def ask_copilot(
         yield "Error: Invalid ANTHROPIC_API_KEY. Check your .env file."
     except anthropic.RateLimitError:
         yield "Error: Claude API rate limit hit. Please retry shortly."
+    except anthropic.BadRequestError as e:
+        msg = str(e)
+        if "credit balance" in msg.lower():
+            yield "Error: Anthropic hesabında kredi yetersiz. https://console.anthropic.com → Plans & Billing → kredi ekle."
+        else:
+            yield f"Error: {msg}"
     except Exception as e:
         yield f"Error: {e}"
         logger.error("llm_copilot ask_copilot: %s", e)
